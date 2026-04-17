@@ -1,59 +1,65 @@
 {% extends "base.html" %}
 {% block title %}Sync-Historie — Snipe-IT Bridge{% endblock %}
 {% block content %}
-<h2 class="mb-4">Sync-Historie</h2>
 
-<div class="card shadow-sm">
+{% set source_colors = {"intune": "#0078d4", "unifi": "#006fff", "proxmox": "#e57000", "zammad": "#7c4dff"} %}
+
+<div class="page-header">
+  <h2><i class="bi bi-clock-history me-2 text-primary"></i>Sync-Historie</h2>
+  <p class="text-muted mt-1 mb-0">Letzte 200 Sync-Läufe</p>
+</div>
+
+<div class="card">
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
-      <thead class="table-dark">
+      <thead>
         <tr>
-          <th>#</th>
+          <th class="ps-4">#</th>
           <th>Quelle</th>
           <th>Gestartet</th>
           <th>Abgeschlossen</th>
-          <th>Dauer</th>
           <th>Status</th>
           <th>Elemente</th>
-          <th></th>
+          <th class="pe-4"></th>
         </tr>
       </thead>
       <tbody>
         {% for run in runs %}
         <tr>
-          <td>{{ run.id }}</td>
-          <td><code>{{ run.source }}</code></td>
-          <td>{{ run.started_at[:19].replace("T", " ") }}</td>
+          <td class="ps-4 text-muted" style="font-size:.8rem">{{ run.id }}</td>
           <td>
-            {% if run.finished_at %}
-              {{ run.finished_at[:19].replace("T", " ") }}
-            {% else %}
-              <em class="text-muted">—</em>
-            {% endif %}
+            <span class="badge rounded-pill" style="background:{{ source_colors.get(run.source, '#6c757d') }}18;color:{{ source_colors.get(run.source, '#6c757d') }};font-size:.78rem;font-weight:600">
+              {{ run.source }}
+            </span>
           </td>
-          <td>
-            {% if run.started_at and run.finished_at %}
-              {# crude duration display #}
-              {{ run.finished_at[11:19] }}
-            {% else %}—{% endif %}
+          <td style="font-size:.85rem">{{ run.started_at[:16].replace("T", " ") }}</td>
+          <td style="font-size:.85rem">
+            {% if run.finished_at %}{{ run.finished_at[:16].replace("T", " ") }}
+            {% else %}<span class="text-muted">—</span>{% endif %}
           </td>
           <td>
             {% if run.status == "success" %}
-              <span class="badge bg-success">Erfolgreich</span>
+              <span class="badge" style="background:#e6f4ea;color:#1e7e34"><i class="bi bi-check-circle me-1"></i>Erfolgreich</span>
             {% elif run.status == "error" %}
-              <span class="badge bg-danger">Fehler</span>
+              <span class="badge" style="background:#fdecea;color:#c0392b"><i class="bi bi-x-circle me-1"></i>Fehler</span>
             {% else %}
               <span class="badge bg-primary">{{ run.status }}</span>
             {% endif %}
           </td>
-          <td>{{ run.items_processed }}</td>
-          <td>
+          <td><span class="fw-semibold">{{ run.items_processed }}</span></td>
+          <td class="pe-4">
             <a href="{{ url_for('run_logs', run_id=run.id) }}"
-               class="btn btn-sm btn-outline-secondary">Logs</a>
+               class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-journal-text me-1"></i>Logs
+            </a>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted py-4">Keine Sync-Läufe vorhanden</td></tr>
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-3 d-block mb-2"></i>Keine Sync-Läufe vorhanden
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

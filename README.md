@@ -38,10 +38,14 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env mit eigenen Werten befüllen
 
-flask run
+# Entwicklung
+flask run --host=0.0.0.0 --port=5000
+
+# Produktion
+gunicorn -b 0.0.0.0:5000 app:app
 ```
 
-Das Dashboard ist dann erreichbar unter `http://localhost:5000`.
+Das Dashboard ist erreichbar unter `http://<server-ip>:5000`.
 
 ---
 

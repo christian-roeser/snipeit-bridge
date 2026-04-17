@@ -1,33 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Logs — Run #{{ run_id }} — Snipe-IT Bridge{% endblock %}
+{% block title %}Logs Run #{{ run_id }} — Snipe-IT Bridge{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Logs — Run #{{ run_id }}</h2>
-  <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-sm">← Zurück</a>
+
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h2><i class="bi bi-journal-text me-2 text-primary"></i>Logs — Run #{{ run_id }}</h2>
+    <p class="text-muted mt-1 mb-0">{{ logs | length }} Einträge</p>
+  </div>
+  <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Zurück
+  </a>
 </div>
 
-<div class="card shadow-sm">
+<div class="card">
   <div class="card-body p-0">
-    <table class="table table-sm table-hover mb-0 font-monospace">
-      <thead class="table-dark">
+    <table class="table table-sm mb-0" style="font-family: 'SF Mono', 'Consolas', monospace;">
+      <thead>
         <tr>
-          <th>Zeit</th>
-          <th>Level</th>
-          <th>Meldung</th>
+          <th class="ps-4" style="width:160px">Zeit</th>
+          <th style="width:80px">Level</th>
+          <th class="pe-4">Meldung</th>
         </tr>
       </thead>
       <tbody>
         {% for entry in logs %}
         <tr class="log-{{ entry.level }}">
-          <td style="white-space:nowrap">{{ entry.timestamp[:19].replace("T", " ") }}</td>
-          <td><span class="badge
-            {% if entry.level == 'ERROR' %}bg-danger
-            {% elif entry.level == 'WARN' %}bg-warning text-dark
-            {% else %}bg-success{% endif %}">{{ entry.level }}</span></td>
-          <td>{{ entry.message }}</td>
+          <td class="ps-4 text-muted" style="white-space:nowrap;font-size:.8rem">
+            {{ entry.timestamp[:19].replace("T", " ") }}
+          </td>
+          <td>
+            {% if entry.level == 'ERROR' %}
+              <span class="badge" style="background:#fdecea;color:#c0392b">ERROR</span>
+            {% elif entry.level == 'WARN' %}
+              <span class="badge" style="background:#fff8e1;color:#b7791f">WARN</span>
+            {% else %}
+              <span class="badge" style="background:#e6f4ea;color:#1e7e34">INFO</span>
+            {% endif %}
+          </td>
+          <td class="pe-4" style="font-size:.83rem">{{ entry.message }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="text-center text-muted py-4">Keine Log-Einträge</td></tr>
+        <tr>
+          <td colspan="3" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-3 d-block mb-2"></i>Keine Log-Einträge
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

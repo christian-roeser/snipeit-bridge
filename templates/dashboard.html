@@ -1,65 +1,94 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Snipe-IT Bridge{% endblock %}
 {% block content %}
-<h2 class="mb-4">Dashboard</h2>
 
-<div class="row g-4">
-  {% set source_labels = {
-    "intune": "Microsoft Intune",
-    "unifi": "Unifi (Site Manager)",
-    "proxmox": "Proxmox",
-    "zammad": "Zammad"
-  } %}
+{% set meta = {
+  "intune":  {"label": "Microsoft Intune",     "icon": "bi-microsoft",        "color": "#0078d4"},
+  "unifi":   {"label": "Unifi Site Manager",   "icon": "bi-wifi",             "color": "#006fff"},
+  "proxmox": {"label": "Proxmox",              "icon": "bi-server",           "color": "#e57000"},
+  "zammad":  {"label": "Zammad",               "icon": "bi-headset",          "color": "#7c4dff"}
+} %}
 
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h2><i class="bi bi-grid me-2 text-primary"></i>Dashboard</h2>
+    <p class="text-muted mt-1 mb-0">Connector-Status und manuelle Sync-Auslösung</p>
+  </div>
+</div>
+
+<div class="row g-3">
   {% for source, info in connector_status.items() %}
+  {% set m = meta[source] %}
   <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>{{ source_labels[source] }}</strong>
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center gap-3">
+        <div style="width:38px;height:38px;background:{{ m.color }}18;border-radius:.5rem;display:flex;align-items:center;justify-content:center;">
+          <i class="{{ m.icon }} fs-5" style="color:{{ m.color }}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold" style="font-size:.95rem">{{ m.label }}</div>
+          <div style="font-size:.75rem;color:#adb5bd">{{ source }}</div>
+        </div>
         {% if info.configured %}
-          <span class="badge bg-success">Konfiguriert</span>
+          <span class="badge rounded-pill" style="background:#e6f4ea;color:#1e7e34;font-size:.72rem">
+            <i class="bi bi-check-circle me-1"></i>Konfiguriert
+          </span>
         {% else %}
-          <span class="badge bg-secondary">Nicht konfiguriert</span>
+          <span class="badge rounded-pill bg-light text-secondary" style="font-size:.72rem">
+            <i class="bi bi-x-circle me-1"></i>Nicht konfiguriert
+          </span>
         {% endif %}
       </div>
-      <div class="card-body">
+
+      <div class="card-body py-3">
         {% if info.last_run %}
           {% set run = info.last_run %}
-          <p class="mb-1">
-            <small class="text-muted">Letzter Sync:</small>
-            {{ run.started_at[:19].replace("T", " ") }}
-          </p>
-          <p class="mb-1">
-            <small class="text-muted">Status:</small>
-            {% if run.status == "success" %}
-              <span class="badge bg-success">Erfolgreich</span>
-            {% elif run.status == "error" %}
-              <span class="badge bg-danger">Fehler</span>
-            {% else %}
-              <span class="badge bg-primary">{{ run.status }}</span>
-            {% endif %}
-          </p>
-          <p class="mb-0">
-            <small class="text-muted">Verarbeitete Elemente:</small>
-            {{ run.items_processed }}
-          </p>
+          <div class="d-flex gap-4">
+            <div>
+              <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Letzter Sync</div>
+              <div style="font-size:.85rem">{{ run.started_at[:16].replace("T", " ") }}</div>
+            </div>
+            <div>
+              <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Status</div>
+              {% if run.status == "success" %}
+                <span class="badge" style="background:#e6f4ea;color:#1e7e34"><i class="bi bi-check-circle me-1"></i>Erfolgreich</span>
+              {% elif run.status == "error" %}
+                <span class="badge" style="background:#fdecea;color:#c0392b"><i class="bi bi-x-circle me-1"></i>Fehler</span>
+              {% else %}
+                <span class="badge bg-primary">{{ run.status }}</span>
+              {% endif %}
+            </div>
+            <div>
+              <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Elemente</div>
+              <div style="font-size:.85rem;font-weight:600">{{ run.items_processed }}</div>
+            </div>
+          </div>
           {% if run.error_msg %}
-            <p class="mb-0 mt-1 text-danger"><small>{{ run.error_msg }}</small></p>
+            <div class="mt-2 p-2 rounded" style="background:#fdecea;font-size:.78rem;color:#c0392b">
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ run.error_msg }}
+            </div>
           {% endif %}
         {% else %}
-          <p class="text-muted mb-0"><em>Noch kein Sync durchgeführt</em></p>
+          <div class="text-muted" style="font-size:.85rem">
+            <i class="bi bi-clock me-1"></i>Noch kein Sync durchgeführt
+          </div>
         {% endif %}
       </div>
-      <div class="card-footer">
-        <form method="post" action="{{ url_for('sync', source=source) }}" class="d-inline">
-          <button type="submit" class="btn btn-sm btn-primary"
+
+      <div class="card-footer d-flex align-items-center gap-2">
+        <form method="post" action="{{ url_for('sync', source=source) }}" class="d-inline"
+              onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>Läuft…'">
+          <button type="submit" class="btn btn-sm fw-medium"
+            style="background:{{ m.color }};color:#fff;border:none"
             {% if not info.configured %}disabled title="Connector nicht konfiguriert"{% endif %}>
-            Sync starten
+            <i class="bi bi-play-fill me-1"></i>Sync starten
           </button>
         </form>
         {% if info.last_run %}
           <a href="{{ url_for('run_logs', run_id=info.last_run.id) }}"
-             class="btn btn-sm btn-outline-secondary ms-2">Logs</a>
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-journal-text me-1"></i>Logs
+          </a>
         {% endif %}
       </div>
     </div>

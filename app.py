@@ -199,4 +199,4 @@ def api_assets():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host=config.HOST, port=config.PORT)
