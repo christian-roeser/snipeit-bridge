@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Sync-Historie — Snipe-IT Bridge{% endblock %}
+{% block content %}
+<h2 class="mb-4">Sync-Historie</h2>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Quelle</th>
+          <th>Gestartet</th>
+          <th>Abgeschlossen</th>
+          <th>Dauer</th>
+          <th>Status</th>
+          <th>Elemente</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td>{{ run.id }}</td>
+          <td><code>{{ run.source }}</code></td>
+          <td>{{ run.started_at[:19].replace("T", " ") }}</td>
+          <td>
+            {% if run.finished_at %}
+              {{ run.finished_at[:19].replace("T", " ") }}
+            {% else %}
+              <em class="text-muted">—</em>
+            {% endif %}
+          </td>
+          <td>
+            {% if run.started_at and run.finished_at %}
+              {# crude duration display #}
+              {{ run.finished_at[11:19] }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if run.status == "success" %}
+              <span class="badge bg-success">Erfolgreich</span>
+            {% elif run.status == "error" %}
+              <span class="badge bg-danger">Fehler</span>
+            {% else %}
+              <span class="badge bg-primary">{{ run.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ run.items_processed }}</td>
+          <td>
+            <a href="{{ url_for('run_logs', run_id=run.id) }}"
+               class="btn btn-sm btn-outline-secondary">Logs</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">Keine Sync-Läufe vorhanden</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Logs — Run #{{ run_id }} — Snipe-IT Bridge{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Logs — Run #{{ run_id }}</h2>
+  <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-sm">← Zurück</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0 font-monospace">
+      <thead class="table-dark">
+        <tr>
+          <th>Zeit</th>
+          <th>Level</th>
+          <th>Meldung</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in logs %}
+        <tr class="log-{{ entry.level }}">
+          <td style="white-space:nowrap">{{ entry.timestamp[:19].replace("T", " ") }}</td>
+          <td><span class="badge
+            {% if entry.level == 'ERROR' %}bg-danger
+            {% elif entry.level == 'WARN' %}bg-warning text-dark
+            {% else %}bg-success{% endif %}">{{ entry.level }}</span></td>
+          <td>{{ entry.message }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted py-4">Keine Log-Einträge</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

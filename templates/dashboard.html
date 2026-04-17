@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Snipe-IT Bridge{% endblock %}
+{% block content %}
+<h2 class="mb-4">Dashboard</h2>
+
+<div class="row g-4">
+  {% set source_labels = {
+    "intune": "Microsoft Intune",
+    "unifi": "Unifi (Site Manager)",
+    "proxmox": "Proxmox",
+    "zammad": "Zammad"
+  } %}
+
+  {% for source, info in connector_status.items() %}
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>{{ source_labels[source] }}</strong>
+        {% if info.configured %}
+          <span class="badge bg-success">Konfiguriert</span>
+        {% else %}
+          <span class="badge bg-secondary">Nicht konfiguriert</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if info.last_run %}
+          {% set run = info.last_run %}
+          <p class="mb-1">
+            <small class="text-muted">Letzter Sync:</small>
+            {{ run.started_at[:19].replace("T", " ") }}
+          </p>
+          <p class="mb-1">
+            <small class="text-muted">Status:</small>
+            {% if run.status == "success" %}
+              <span class="badge bg-success">Erfolgreich</span>
+            {% elif run.status == "error" %}
+              <span class="badge bg-danger">Fehler</span>
+            {% else %}
+              <span class="badge bg-primary">{{ run.status }}</span>
+            {% endif %}
+          </p>
+          <p class="mb-0">
+            <small class="text-muted">Verarbeitete Elemente:</small>
+            {{ run.items_processed }}
+          </p>
+          {% if run.error_msg %}
+            <p class="mb-0 mt-1 text-danger"><small>{{ run.error_msg }}</small></p>
+          {% endif %}
+        {% else %}
+          <p class="text-muted mb-0"><em>Noch kein Sync durchgeführt</em></p>
+        {% endif %}
+      </div>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('sync', source=source) }}" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-primary"
+            {% if not info.configured %}disabled title="Connector nicht konfiguriert"{% endif %}>
+            Sync starten
+          </button>
+        </form>
+        {% if info.last_run %}
+          <a href="{{ url_for('run_logs', run_id=info.last_run.id) }}"
+             class="btn btn-sm btn-outline-secondary ms-2">Logs</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
