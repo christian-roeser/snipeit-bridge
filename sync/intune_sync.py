@@ -1,7 +1,19 @@
+import re
 import time
 import secrets
 import requests
 import db
+
+
+def _shorten_lenovo_name(name):
+    # "(ThinkPad) - Type" or "(ThinkCentre) - Type" → extract brand
+    brand_match = re.search(r'\((\w[\w\s]*?)\)\s*-\s*Type', name)
+    brand = brand_match.group(1).strip() if brand_match else ""
+    model = name.split("(")[0].strip()
+    if brand:
+        return f"{brand} {model}"
+    # Fallback: strip trailing " - Type XXXX"
+    return re.sub(r'\s*-\s*Type\s+\S+$', '', model).strip() or name
 
 
 def _lenovo_model_name(serial, cache):
@@ -16,7 +28,8 @@ def _lenovo_model_name(serial, cache):
         )
         if r.ok:
             data = r.json()
-            name = data[0].get("Name") if isinstance(data, list) and data else None
+            raw = data[0].get("Name") if isinstance(data, list) and data else None
+            name = _shorten_lenovo_name(raw) if raw else None
             cache[serial] = name
             return name
     except Exception:
