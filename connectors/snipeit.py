@@ -107,7 +107,7 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/companies", {"name": name})
-                self._cache[key] = result.get("payload", {}).get("id")
+                self._cache[key] = (result.get("payload") or {}).get("id")
         return self._cache[key]
 
     def get_user_by_username(self, username):
