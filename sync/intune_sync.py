@@ -1,6 +1,28 @@
 import time
 import secrets
+import requests
 import db
+
+
+def _lenovo_model_name(serial, cache):
+    if serial in cache:
+        return cache[serial]
+    try:
+        r = requests.get(
+            "https://pcsupport.lenovo.com/us/en/api/v4/mse/getproducts",
+            params={"productId": serial},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if r.ok:
+            data = r.json()
+            name = data[0].get("Name") if isinstance(data, list) and data else None
+            cache[serial] = name
+            return name
+    except Exception:
+        pass
+    cache[serial] = None
+    return None
 
 
 def run(snipeit, intune, run_id):
@@ -19,12 +41,18 @@ def _sync_devices(snipeit, intune, run_id):
         db.log(run_id, "ERROR", f"Failed to fetch Intune devices: {e}")
         raise
 
+    lenovo_cache = {}
     for device in devices:
         time.sleep(0.1)
         serial = device.get("serialNumber", "").strip()
         name = device.get("deviceName") or device.get("displayName") or serial
         manufacturer = device.get("manufacturer") or "Unknown"
         model_name = device.get("model") or "Unknown"
+
+        if manufacturer.lower() == "lenovo" and serial:
+            resolved = _lenovo_model_name(serial, lenovo_cache)
+            if resolved:
+                model_name = resolved
 
         if not serial:
             db.log(run_id, "WARN", f"Skipping device '{name}' — no serial number")
