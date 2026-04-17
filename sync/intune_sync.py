@@ -41,21 +41,12 @@ def _sync_devices(snipeit, intune, run_id):
                 "model_id": model_id,
             }
 
-            # Check local DB cache first; fall back to Snipe-IT API only on first
-            # encounter to avoid one extra API call per device on every sync run.
-            existing_id = db.get_mapping("intune", serial)
-            if existing_id is None:
-                existing = snipeit.get_hardware_by_serial(serial)
-                existing_id = existing["id"] if existing else None
+            # Always verify via API — local mapping may be stale after a purge.
+            existing = snipeit.get_hardware_by_serial(serial)
+            existing_id = existing["id"] if existing else None
 
             if existing_id:
-                try:
-                    snipeit.update_hardware(existing_id, payload)
-                except Exception:
-                    # Asset was deleted in Snipe-IT — clear stale mapping and recreate.
-                    existing_id = None
-
-            if existing_id:
+                snipeit.update_hardware(existing_id, payload)
                 db.set_mapping("intune", serial, existing_id)
                 db.log(run_id, "INFO", f"Updated asset '{name}' (serial={serial}, id={existing_id})")
             else:
