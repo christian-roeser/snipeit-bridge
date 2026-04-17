@@ -89,6 +89,7 @@ def _sync_users(snipeit, intune, run_id):
         last = user.get("surname") or (display.split()[-1] if " " in display else "")
         email = user.get("mail") or upn
         employee_num = user.get("employeeId") or ""
+        company_name = (user.get("companyName") or "").strip()
 
         try:
             existing = snipeit.get_user_by_username(upn)
@@ -103,6 +104,9 @@ def _sync_users(snipeit, intune, run_id):
                 "locale": "de-DE",
                 # activated=false: user exists for asset assignment but cannot log in.
                 "activated": False,
+                **({
+                    "company_id": snipeit.get_or_create_company(company_name),
+                } if company_name else {}),
             }
 
             if existing:

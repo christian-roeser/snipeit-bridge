@@ -51,7 +51,7 @@ class Intune:
                 url,
                 params={
                     "$filter": "accountEnabled eq true",
-                    "$select": "id,displayName,givenName,surname,userPrincipalName,mail,employeeId",
+                    "$select": "id,displayName,givenName,surname,userPrincipalName,mail,employeeId,companyName",
                     "$top": 999,
                 } if "?" not in url else None,
             )
