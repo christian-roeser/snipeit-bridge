@@ -96,11 +96,10 @@ def _sync_users(snipeit, intune, run_id):
             payload = {
                 "first_name": first,
                 "last_name": last,
-                "name": f"{first} {last}".strip(),
                 "username": upn,
                 "email": email,
                 "employee_num": employee_num,
-                "locale": "de",
+                "locale": "de-DE",
                 # activated=false: user exists for asset assignment but cannot log in.
                 "activated": False,
             }
