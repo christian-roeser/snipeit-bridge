@@ -49,7 +49,13 @@ def _sync_devices(snipeit, intune, run_id):
                 existing_id = existing["id"] if existing else None
 
             if existing_id:
-                snipeit.update_hardware(existing_id, payload)
+                try:
+                    snipeit.update_hardware(existing_id, payload)
+                except Exception:
+                    # Asset was deleted in Snipe-IT — clear stale mapping and recreate.
+                    existing_id = None
+
+            if existing_id:
                 db.set_mapping("intune", serial, existing_id)
                 db.log(run_id, "INFO", f"Updated asset '{name}' (serial={serial}, id={existing_id})")
             else:
