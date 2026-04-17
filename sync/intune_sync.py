@@ -90,6 +90,7 @@ def _sync_users(snipeit, intune, run_id):
         email = user.get("mail") or upn
         employee_num = user.get("employeeId") or ""
         company_name = (user.get("companyName") or "").strip()
+        db.log(run_id, "DEBUG", f"User '{upn}': companyName={user.get('companyName')!r}, displayName={user.get('displayName')!r}")
 
         try:
             existing = snipeit.get_user_by_username(upn)
