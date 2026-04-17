@@ -101,12 +101,15 @@ class SnipeIT:
         key = ("company", name)
         if key not in self._cache:
             data = self._get("/companies", params={"search": name, "limit": 10})
+            import logging
+            logging.getLogger(__name__).warning("Company search for %r: %s", name, data)
             for c in data.get("rows", []):
                 if c["name"] == name:
                     self._cache[key] = c["id"]
                     break
             else:
                 result = self._post("/companies", {"name": name})
+                logging.getLogger(__name__).warning("Company create for %r: %s", name, result)
                 self._cache[key] = (result.get("payload") or {}).get("id")
         return self._cache[key]
 
