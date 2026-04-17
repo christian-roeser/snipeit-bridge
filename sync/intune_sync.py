@@ -95,8 +95,11 @@ def _sync_users(snipeit, intune, run_id):
         try:
             existing = snipeit.get_user_by_username(upn)
 
-            company_id = snipeit.get_or_create_company(company_name) if company_name else None
-            db.log(run_id, "DEBUG", f"User '{upn}': company_name={company_name!r}, company_id={company_id!r}")
+            if company_name:
+                company_id, company_debug = snipeit.get_or_create_company(company_name, _debug=True)
+                db.log(run_id, "DEBUG", f"User '{upn}': company_name={company_name!r}, company_id={company_id!r}, api={company_debug}")
+            else:
+                company_id = None
 
             payload = {
                 "first_name": first,

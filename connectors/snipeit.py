@@ -97,20 +97,24 @@ class SnipeIT:
                 self._cache[key] = result.get("payload", {}).get("id")
         return self._cache[key]
 
-    def get_or_create_company(self, name):
+    def get_or_create_company(self, name, _debug=False):
         key = ("company", name)
+        debug_info = {}
         if key not in self._cache:
             data = self._get("/companies", params={"search": name, "limit": 10})
-            import logging
-            logging.getLogger(__name__).warning("Company search for %r: %s", name, data)
+            if _debug:
+                debug_info["search"] = data
             for c in data.get("rows", []):
                 if c["name"] == name:
                     self._cache[key] = c["id"]
                     break
             else:
                 result = self._post("/companies", {"name": name})
-                logging.getLogger(__name__).warning("Company create for %r: %s", name, result)
+                if _debug:
+                    debug_info["create"] = result
                 self._cache[key] = (result.get("payload") or {}).get("id")
+        if _debug:
+            return self._cache[key], debug_info
         return self._cache[key]
 
     def get_user_by_username(self, username):
