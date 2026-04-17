@@ -28,7 +28,7 @@ Syncs werden manuell über das Dashboard oder per Cronjob ausgelöst. Keine Hint
 ## Installation
 
 ```bash
-git clone https://github.com/yourorg/snipeit-bridge.git
+git clone https://github.com/christian-roeser/snipeit-bridge.git
 cd snipeit-bridge
 
 python3 -m venv .venv
