@@ -112,7 +112,15 @@ class SnipeIT:
                 result = self._post("/companies", {"name": name})
                 if _debug:
                     debug_info["create"] = result
-                self._cache[key] = (result.get("payload") or {}).get("id")
+                cid = (result.get("payload") or {}).get("id")
+                if cid is None:
+                    # Name already exists but search missed it — scan all.
+                    all_data = self._get("/companies", params={"limit": 500})
+                    for c in all_data.get("rows", []):
+                        if c["name"] == name:
+                            cid = c["id"]
+                            break
+                self._cache[key] = cid
         if _debug:
             return self._cache[key], debug_info
         return self._cache[key]
