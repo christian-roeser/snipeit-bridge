@@ -39,6 +39,13 @@ def init_db():
                 UNIQUE(source, source_id)
             );
         """)
+        # Syncs run synchronously in the request thread — any "running" row at
+        # startup is an orphan from a crashed/killed process and will never finish.
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "UPDATE sync_runs SET status='error', finished_at=?, error_msg='Interrupted (process restart)' WHERE status='running'",
+            (now,),
+        )
 
 
 def begin_run(source):
