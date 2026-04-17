@@ -114,12 +114,10 @@ def sync(source):
             items = zammad_sync.run(snipeit, zammad, run_id)
 
         db.end_run(run_id, "success", items)
-        flash(f"Sync '{source}' completed — {items} items processed", "success")
     except Exception as e:
         error = str(e)
         db.log(run_id, "ERROR", f"Unhandled error: {e}")
         db.end_run(run_id, "error", items, error)
-        flash(f"Sync '{source}' failed: {e}", "danger")
 
     return redirect(url_for("dashboard"))
 
