@@ -17,7 +17,7 @@ def _sync_devices(snipeit, intune, run_id):
         db.log(run_id, "INFO", f"Fetched {len(devices)} devices from Intune")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Intune devices: {e}")
-        return 0
+        raise
 
     for device in devices:
         time.sleep(0.1)
@@ -75,7 +75,7 @@ def _sync_users(snipeit, intune, run_id):
         db.log(run_id, "INFO", f"Fetched {len(users)} active users from Intune")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Intune users: {e}")
-        return 0
+        raise
 
     for user in users:
         time.sleep(0.1)

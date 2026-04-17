@@ -9,7 +9,7 @@ def run(snipeit, proxmox, run_id):
         db.log(run_id, "INFO", f"Fetched {len(assets)} assets from Proxmox")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Proxmox assets: {e}")
-        return 0
+        raise
 
     for asset in assets:
         time.sleep(0.1)

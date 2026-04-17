@@ -9,7 +9,7 @@ def run(snipeit, unifi, run_id):
         db.log(run_id, "INFO", f"Fetched {len(devices)} devices from Unifi")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Unifi devices: {e}")
-        return 0
+        raise
 
     for device in devices:
         time.sleep(0.1)

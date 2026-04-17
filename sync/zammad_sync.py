@@ -12,7 +12,7 @@ def run(snipeit, zammad, run_id):
         db.log(run_id, "INFO", f"Found {len(tickets)} Zammad tickets with asset references")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Zammad tickets: {e}")
-        return 0
+        raise
 
     for ticket in tickets:
         time.sleep(0.1)
