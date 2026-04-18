@@ -26,7 +26,7 @@
         {% for entry in logs %}
         <tr class="log-{{ entry.level }}">
           <td class="ps-4 text-muted" style="white-space:nowrap;font-size:.8rem">
-            {{ entry.timestamp[:19].replace("T", " ") }}
+            {{ entry.timestamp | localtime }}
           </td>
           <td>
             {% if entry.level == 'ERROR' %}
