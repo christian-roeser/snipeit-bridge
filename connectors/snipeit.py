@@ -1,4 +1,5 @@
 import time
+import re
 import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -108,6 +109,24 @@ class SnipeIT:
             raise RuntimeError(f"Snipe-IT rejected {path} create for '{name}': {msg}")
         return rid
 
+    @staticmethod
+    def _norm_model_name(s):
+        # Ignore punctuation/spacing differences like ')(' vs ') (' in model names.
+        return re.sub(r"[^\w]+", "", (s or "").casefold())
+
+    def _find_model_by_name(self, name, page_size=500):
+        target = self._norm_model_name(name)
+        offset = 0
+        while True:
+            data = self._get("/models", params={"limit": page_size, "offset": offset})
+            rows = (data or {}).get("rows", []) or []
+            for row in rows:
+                if self._norm_model_name(row.get("name")) == target:
+                    return row.get("id")
+            if len(rows) < page_size:
+                return None
+            offset += page_size
+
     def get_or_create_category(self, name, category_type="asset"):
         key = ("category", name)
         if key not in self._cache:
@@ -164,13 +183,19 @@ class SnipeIT:
     def get_or_create_model(self, name, manufacturer_id, category_id, model_number=None):
         key = ("model", name)
         if key not in self._cache:
-            data = self._get("/models", params={"search": name, "limit": 10})
+            data = self._get("/models", params={"search": name, "limit": 100})
             target = self._norm(name)
+            target_loose = self._norm_model_name(name)
             for m in (data or {}).get("rows", []):
-                if self._norm(m.get("name")) == target:
+                if self._norm(m.get("name")) == target or self._norm_model_name(m.get("name")) == target_loose:
                     self._cache[key] = m["id"]
                     break
             else:
+                # Search endpoints can miss near-identical names due to punctuation.
+                existing_id = self._find_model_by_name(name)
+                if existing_id:
+                    self._cache[key] = existing_id
+                    return self._cache[key]
                 payload = {
                     "name": name,
                     "manufacturer_id": manufacturer_id,
