@@ -27,7 +27,7 @@ class Config:
     DASHBOARD_USER = os.getenv("DASHBOARD_USER", "admin")
     DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
     SECRET_KEY = os.getenv("SECRET_KEY", "")
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
     TRUST_PROXY = os.getenv("TRUST_PROXY", "false").lower() == "true"
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     WORKER_COUNT = int(os.getenv("WEB_CONCURRENCY", os.getenv("GUNICORN_WORKERS", "1")))
