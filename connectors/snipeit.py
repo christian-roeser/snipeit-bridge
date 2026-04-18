@@ -69,7 +69,11 @@ class SnipeIT:
 
     def create_hardware(self, payload):
         result = self._post("/hardware", payload)
-        return ((result or {}).get("payload") or {}).get("id")
+        asset_id = ((result or {}).get("payload") or {}).get("id")
+        if asset_id is None:
+            msg = (result or {}).get("messages") or (result or {}).get("error") or result
+            raise RuntimeError(f"Snipe-IT rejected hardware create: {msg}")
+        return asset_id
 
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)

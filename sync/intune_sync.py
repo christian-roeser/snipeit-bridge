@@ -106,12 +106,8 @@ def _sync_devices(snipeit, intune, run_id):
                 db.log(run_id, "INFO", f"Updated asset '{name}' (serial={serial}, id={existing_id})")
             else:
                 new_id = snipeit.create_hardware({**payload, "status_id": 1})
-                if new_id:
-                    db.set_mapping("intune", serial, new_id)
-                    db.log(run_id, "INFO", f"Created asset '{name}' (serial={serial}, id={new_id})")
-                else:
-                    db.log(run_id, "WARN", f"Failed to create asset '{name}' — no ID returned")
-                    continue
+                db.set_mapping("intune", serial, new_id)
+                db.log(run_id, "INFO", f"Created asset '{name}' (serial={serial}, id={new_id})")
 
             items += 1
         except Exception as e:
