@@ -48,7 +48,7 @@ def run(snipeit, unifi, run_id):
             db.log(run_id, "WARN", f"Skipping device '{name}' — no MAC address")
             continue
 
-        asset_tag = f"UNIFI-{mac.replace(':', '').upper()}"
+        serial = mac.upper()
 
         try:
             category_id = snipeit.get_or_create_category(f"Unifi {device_type.capitalize()}")
@@ -57,13 +57,13 @@ def run(snipeit, unifi, run_id):
 
             payload = {
                 "name": name,
-                "asset_tag": asset_tag,
+                "serial": serial,
                 "model_id": model_id,
             }
 
             existing_id = db.get_mapping("unifi", mac)
             if existing_id is None:
-                existing = snipeit.get_hardware_by_asset_tag(asset_tag)
+                existing = snipeit.get_hardware_by_serial(serial)
                 existing_id = existing["id"] if existing else None
 
             if existing_id:

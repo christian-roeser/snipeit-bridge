@@ -1,3 +1,4 @@
+from sync import unifi_sync
 from sync.unifi_sync import _extract_mac, _device_name
 
 
@@ -16,3 +17,89 @@ def test_device_name_fallback_is_never_empty():
     assert name.startswith("unknown-device")
     assert "SiteA" in name
     assert "host-1" in name
+
+
+def test_run_sets_mac_as_serial_on_create(monkeypatch):
+    class FakeUnifi:
+        def get_devices(self):
+            return [{"mac": "aa:bb:cc:dd:ee:ff", "name": "AP-1", "model": "U7"}]
+
+        def get_last_errors(self):
+            return []
+
+    class FakeSnipeit:
+        def get_or_create_category(self, _):
+            return 1
+
+        def get_or_create_manufacturer(self, _):
+            return 2
+
+        def get_or_create_model(self, *_):
+            return 3
+
+        def get_hardware_by_serial(self, _):
+            return None
+
+        def create_hardware(self, payload):
+            self.payload = payload
+            return 123
+
+        def update_hardware(self, *_):
+            raise AssertionError("update_hardware should not be called")
+
+    monkeypatch.setattr(unifi_sync.time, "sleep", lambda _: None)
+    monkeypatch.setattr(unifi_sync.db, "log", lambda *args, **kwargs: None)
+    monkeypatch.setattr(unifi_sync.db, "get_mapping", lambda *args, **kwargs: None)
+    monkeypatch.setattr(unifi_sync.db, "set_mapping", lambda *args, **kwargs: None)
+
+    snipeit = FakeSnipeit()
+    items = unifi_sync.run(snipeit, FakeUnifi(), run_id=1)
+
+    assert items == 1
+    assert snipeit.payload["serial"] == "AA:BB:CC:DD:EE:FF"
+    assert "asset_tag" not in snipeit.payload
+
+
+def test_run_uses_serial_lookup_fallback(monkeypatch):
+    class FakeUnifi:
+        def get_devices(self):
+            return [{"mac": "aa:bb:cc:dd:ee:ff", "name": "AP-1", "model": "U7"}]
+
+        def get_last_errors(self):
+            return []
+
+    class FakeSnipeit:
+        def __init__(self):
+            self.updated = False
+
+        def get_or_create_category(self, _):
+            return 1
+
+        def get_or_create_manufacturer(self, _):
+            return 2
+
+        def get_or_create_model(self, *_):
+            return 3
+
+        def get_hardware_by_serial(self, serial):
+            assert serial == "AA:BB:CC:DD:EE:FF"
+            return {"id": 777}
+
+        def create_hardware(self, _):
+            raise AssertionError("create_hardware should not be called")
+
+        def update_hardware(self, asset_id, payload):
+            self.updated = True
+            assert asset_id == 777
+            assert payload["serial"] == "AA:BB:CC:DD:EE:FF"
+
+    monkeypatch.setattr(unifi_sync.time, "sleep", lambda _: None)
+    monkeypatch.setattr(unifi_sync.db, "log", lambda *args, **kwargs: None)
+    monkeypatch.setattr(unifi_sync.db, "get_mapping", lambda *args, **kwargs: None)
+    monkeypatch.setattr(unifi_sync.db, "set_mapping", lambda *args, **kwargs: None)
+
+    snipeit = FakeSnipeit()
+    items = unifi_sync.run(snipeit, FakeUnifi(), run_id=1)
+
+    assert items == 1
+    assert snipeit.updated is True
