@@ -79,11 +79,15 @@ class SnipeIT:
         self._patch(f"/hardware/{asset_id}", payload)
 
     def _find_by_name(self, path, name, limit=500):
-        # Recovery scan when search/create returned no usable id (e.g. duplicate
-        # name with different attributes, or Snipe-IT returned 200 with error status).
+        # Recovery scan when search/create returned no usable id. Comparison is
+        # normalized (whitespace + case) because Snipe-IT may store names with
+        # subtle differences (smart quotes, extra spaces) that break strict ==.
+        def norm(s):
+            return " ".join((s or "").split()).casefold()
+        target = norm(name)
         data = self._get(path, params={"limit": limit})
         for row in (data or {}).get("rows", []):
-            if row.get("name") == name:
+            if norm(row.get("name")) == target:
                 return row.get("id")
         return None
 
