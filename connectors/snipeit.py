@@ -82,16 +82,22 @@ class SnipeIT:
     def _norm(s):
         return " ".join((s or "").split()).casefold()
 
-    def _find_by_name(self, path, name, limit=500):
-        # Recovery scan when search/create returned no usable id. Comparison is
-        # normalized (whitespace + case) because Snipe-IT may store names with
-        # subtle differences (smart quotes, extra spaces) that break strict ==.
+    def _find_by_name(self, path, name, page_size=500):
+        # Recovery scan when search/create returned no usable id. Paginates the
+        # full list because Snipe-IT's search endpoint can fail to return rows
+        # whose names contain special chars like (, ), or quotes. Comparison is
+        # normalized (whitespace + case) for subtle stored-name differences.
         target = self._norm(name)
-        data = self._get(path, params={"limit": limit})
-        for row in (data or {}).get("rows", []):
-            if self._norm(row.get("name")) == target:
-                return row.get("id")
-        return None
+        offset = 0
+        while True:
+            data = self._get(path, params={"limit": page_size, "offset": offset})
+            rows = (data or {}).get("rows", []) or []
+            for row in rows:
+                if self._norm(row.get("name")) == target:
+                    return row.get("id")
+            if len(rows) < page_size:
+                return None
+            offset += page_size
 
     def _created_id(self, result, path, name):
         rid = ((result or {}).get("payload") or {}).get("id")
