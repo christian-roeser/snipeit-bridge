@@ -191,13 +191,17 @@ class SnipeIT:
             target_loose = self._norm_model_name(name)
             for m in (data or {}).get("rows", []):
                 if self._norm(m.get("name")) == target or self._norm_model_name(m.get("name")) == target_loose:
-                    self._cache[key] = m["id"]
+                    mid = m["id"]
+                    self._cache[key] = mid
+                    if (m.get("category") or {}).get("id") != category_id:
+                        self._patch(f"/models/{mid}", {"category_id": category_id})
                     break
             else:
                 # Search endpoints can miss near-identical names due to punctuation.
                 existing_id = self._find_model_by_name(name)
                 if existing_id:
                     self._cache[key] = existing_id
+                    self._patch(f"/models/{existing_id}", {"category_id": category_id})
                     return self._cache[key]
                 payload = {
                     "name": name,
