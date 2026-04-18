@@ -108,36 +108,8 @@ class SnipeIT:
             rid = self._find_by_name(path, name)
         if rid is None:
             msg = (result or {}).get("messages") or (result or {}).get("error") or result
-            hint = self._diagnose_name_conflict(path, name)
-            raise RuntimeError(f"Snipe-IT rejected {path} create for '{name}': {msg}{hint}")
+            raise RuntimeError(f"Snipe-IT rejected {path} create for '{name}': {msg}")
         return rid
-
-    def _diagnose_name_conflict(self, path, name):
-        # When create fails with a unique-name error but our lookup misses,
-        # dump candidate stored names sharing the first significant token so
-        # we can see how Snipe-IT actually stored the name (encoding etc.).
-        try:
-            tokens = re.findall(r"\w+", name)
-            if not tokens:
-                return ""
-            needle = tokens[0].casefold()
-            candidates = []
-            offset = 0
-            while True:
-                data = self._get(path, params={"limit": 500, "offset": offset})
-                rows = (data or {}).get("rows", []) or []
-                for row in rows:
-                    n = row.get("name") or ""
-                    if needle in n.casefold():
-                        candidates.append(f"id={row.get('id')} name={n!r}")
-                if len(rows) < 500:
-                    break
-                offset += 500
-            if not candidates:
-                return " (no similar stored names found)"
-            return " (similar stored names: " + "; ".join(candidates[:10]) + ")"
-        except Exception as e:
-            return f" (diagnosis failed: {e})"
 
     @staticmethod
     def _norm_model_name(s):
