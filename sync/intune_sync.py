@@ -88,7 +88,8 @@ def _sync_devices(snipeit, intune, run_id):
             continue
 
         try:
-            category_id = snipeit.get_or_create_category("Intune Device")
+            category_name = device.get("deviceCategoryDisplayName") or "Intune Device"
+            category_id = snipeit.get_or_create_category(category_name)
             manufacturer_id = snipeit.get_or_create_manufacturer(manufacturer)
             model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id, model_number)
 
