@@ -47,6 +47,23 @@ class Unifi:
                 return meta.get(key)
         return None
 
+    @staticmethod
+    def _iter_device_rows(row):
+        if isinstance(row.get("devices"), list):
+            host_id = row.get("hostId") or row.get("host_id")
+            site_id = row.get("siteId") or row.get("site_id")
+            for item in row.get("devices", []):
+                if not isinstance(item, dict):
+                    continue
+                device = dict(item)
+                if host_id and not device.get("hostId") and not device.get("host_id"):
+                    device["hostId"] = host_id
+                if site_id and not device.get("siteId") and not device.get("site_id"):
+                    device["siteId"] = site_id
+                yield device
+            return
+        yield row
+
     def get_devices(self):
         sites = self._get_sites()
         self._last_errors = []
@@ -86,12 +103,13 @@ class Unifi:
                 raise RuntimeError(f"Failed to fetch Unifi devices: {e}") from e
 
             rows = data.get("data", []) if isinstance(data, dict) else []
-            for device in rows:
-                device_host_id = device.get("hostId") or device.get("host_id")
-                site_info = host_to_site.get(device_host_id, {})
-                device["_site_id"] = site_info.get("site_id") or device.get("siteId") or device.get("site_id") or ""
-                device["_site_name"] = site_info.get("site_name") or device["_site_id"]
-                all_devices.append(device)
+            for row in rows:
+                for device in self._iter_device_rows(row):
+                    device_host_id = device.get("hostId") or device.get("host_id")
+                    site_info = host_to_site.get(device_host_id, {})
+                    device["_site_id"] = site_info.get("site_id") or device.get("siteId") or device.get("site_id") or ""
+                    device["_site_name"] = site_info.get("site_name") or device["_site_id"]
+                    all_devices.append(device)
 
             next_token = data.get("nextToken") if isinstance(data, dict) else None
             if not next_token:

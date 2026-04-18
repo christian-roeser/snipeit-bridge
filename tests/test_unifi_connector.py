@@ -65,3 +65,33 @@ def test_get_devices_raises_if_no_host_ids_present():
     with pytest.raises(RuntimeError, match="No valid UniFi hostIds"):
         unifi.get_devices()
     assert "Missing hostId for site site-a" in unifi.get_last_errors()[0]
+
+
+def test_get_devices_flattens_wrapped_host_payload():
+    unifi = Unifi("https://api.ui.com", "test-key")
+
+    def fake_get(path, params=None):
+        if path == "/v1/sites":
+            return {"data": [{"siteId": "site-a", "name": "A", "hostId": "host-a"}]}
+        if path == "/v1/devices":
+            return {
+                "data": [
+                    {
+                        "hostId": "host-a",
+                        "siteId": "site-a",
+                        "devices": [
+                            {"uidb": {"mac": "AA:AA:AA:AA:AA:01"}},
+                            {"uidb": {"mac": "AA:AA:AA:AA:AA:02"}},
+                        ],
+                    }
+                ]
+            }
+        raise AssertionError(f"Unexpected path: {path}")
+
+    unifi._get = fake_get
+
+    devices = unifi.get_devices()
+
+    assert len(devices) == 2
+    assert devices[0]["hostId"] == "host-a"
+    assert devices[0]["_site_id"] == "site-a"
