@@ -69,7 +69,7 @@ class SnipeIT:
 
     def create_hardware(self, payload):
         result = self._post("/hardware", payload)
-        return (result or {}).get("payload", {}).get("id")
+        return ((result or {}).get("payload") or {}).get("id")
 
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
@@ -140,7 +140,7 @@ class SnipeIT:
 
     def create_user(self, payload):
         result = self._post("/users", payload)
-        return (result or {}).get("payload", {}).get("id")
+        return ((result or {}).get("payload") or {}).get("id")
 
     def update_user(self, user_id, payload):
         self._patch(f"/users/{user_id}", payload)
