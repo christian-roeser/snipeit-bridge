@@ -67,6 +67,15 @@ def end_run(run_id, status, items=0, error=None):
         )
 
 
+def has_errors(run_id):
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM sync_log WHERE run_id=? AND level='ERROR'",
+            (run_id,),
+        ).fetchone()
+        return (row[0] if row else 0) > 0
+
+
 def log(run_id, level, message):
     now = datetime.now(timezone.utc).isoformat()
     with _conn() as conn:

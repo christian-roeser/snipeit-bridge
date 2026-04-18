@@ -137,7 +137,8 @@ def sync(source):
             zammad = Zammad(config.ZAMMAD_URL, config.ZAMMAD_TOKEN)
             items = zammad_sync.run(snipeit, zammad, run_id)
 
-        db.end_run(run_id, "success", items)
+        status = "partial" if db.has_errors(run_id) else "success"
+        db.end_run(run_id, status, items)
     except Exception as e:
         error = str(e)
         db.log(run_id, "ERROR", f"Unhandled error: {e}")

@@ -52,6 +52,8 @@
               <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Status</div>
               {% if run.status == "success" %}
                 <span class="badge" style="background:#e6f4ea;color:#1e7e34"><i class="bi bi-check-circle me-1"></i>Erfolgreich</span>
+              {% elif run.status == "partial" %}
+                <span class="badge" style="background:#fff3cd;color:#856404"><i class="bi bi-exclamation-triangle me-1"></i>Teilweise</span>
               {% elif run.status == "error" %}
                 <span class="badge" style="background:#fdecea;color:#c0392b"><i class="bi bi-x-circle me-1"></i>Fehler</span>
               {% else %}
