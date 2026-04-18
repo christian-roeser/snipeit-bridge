@@ -46,6 +46,29 @@ class SnipeIT:
     def _patch(self, path, payload):
         return self._request("PATCH", path, json=payload)
 
+    def _post_model_with_image(self, payload, image_url):
+        # Laravel ignores files on PATCH; include image during creation via multipart POST.
+        try:
+            img = requests.get(image_url, timeout=15)
+            if not img.ok:
+                return self._post("/models", payload)
+            filename = image_url.rsplit("/", 1)[-1] or "model.jpg"
+            content_type = img.headers.get("Content-Type", "image/jpeg").split(";")[0]
+            r = requests.post(
+                f"{self.base}/models",
+                data=payload,
+                files={"image": (filename, img.content, content_type)},
+                headers={
+                    "Authorization": self.session.headers["Authorization"],
+                    "Accept": "application/json",
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            return r.json()
+        except Exception:
+            return self._post("/models", payload)
+
     def get_hardware_by_id(self, asset_id):
         return self._get(f"/hardware/{asset_id}")
 
@@ -73,25 +96,6 @@ class SnipeIT:
 
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
-
-    def set_model_image(self, model_id, image_url):
-        try:
-            img = requests.get(image_url, timeout=15)
-            if not img.ok:
-                return
-            filename = image_url.rsplit("/", 1)[-1] or "model.jpg"
-            content_type = img.headers.get("Content-Type", "image/jpeg").split(";")[0]
-            requests.patch(
-                f"{self.base}/models/{model_id}",
-                files={"image": (filename, img.content, content_type)},
-                headers={
-                    "Authorization": self.session.headers["Authorization"],
-                    "Accept": "application/json",
-                },
-                timeout=30,
-            )
-        except Exception:
-            pass
 
     def _find_by_name(self, path, name, limit=500):
         # Recovery scan when search/create returned no usable id (e.g. duplicate
@@ -180,11 +184,12 @@ class SnipeIT:
                 }
                 if model_number:
                     payload["model_number"] = model_number
-                result = self._post("/models", payload)
+                if image_url:
+                    result = self._post_model_with_image(payload, image_url)
+                else:
+                    result = self._post("/models", payload)
                 mid = ((result or {}).get("payload") or {}).get("id")
                 if mid is None:
                     mid = self._find_by_name("/models", name)
                 self._cache[key] = mid
-                if image_url and mid:
-                    self.set_model_image(mid, image_url)
         return self._cache[key]
