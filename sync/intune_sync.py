@@ -1,6 +1,7 @@
 import re
 import time
 import secrets
+import traceback
 import requests
 import db
 
@@ -115,7 +116,7 @@ def _sync_devices(snipeit, intune, run_id):
 
             items += 1
         except Exception as e:
-            db.log(run_id, "ERROR", f"Error processing '{name}' (serial={serial}): {e}")
+            db.log(run_id, "ERROR", f"Error processing '{name}' (serial={serial}): {e}\n{traceback.format_exc()}")
 
     return items
 
