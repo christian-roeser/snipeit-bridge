@@ -6,6 +6,8 @@ def run(snipeit, unifi, run_id):
     items = 0
     try:
         devices = unifi.get_devices()
+        for msg in unifi.get_last_errors():
+            db.log(run_id, "WARN", msg)
         db.log(run_id, "INFO", f"Fetched {len(devices)} devices from Unifi")
     except Exception as e:
         db.log(run_id, "ERROR", f"Failed to fetch Unifi devices: {e}")

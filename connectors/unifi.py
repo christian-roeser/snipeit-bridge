@@ -20,6 +20,7 @@ class Unifi:
         self.session = _session(api_key)
         # sites: "ALL" or comma-separated site IDs
         self.site_filter = None if sites.upper() == "ALL" else [s.strip() for s in sites.split(",")]
+        self._last_errors = []
 
     def _get(self, path, params=None):
         r = self.session.get(f"{self.base}{path}", params=params, timeout=30)
@@ -35,6 +36,7 @@ class Unifi:
 
     def get_devices(self):
         sites = self._get_sites()
+        self._last_errors = []
         all_devices = []
         for site in sites:
             site_id = site.get("siteId") or site.get("id")
@@ -45,6 +47,11 @@ class Unifi:
                     device["_site_name"] = site.get("name", site_id)
                     all_devices.append(device)
             except Exception as e:
-                # log-friendly: caller handles errors
-                raise RuntimeError(f"Failed to fetch devices for site {site_id}: {e}") from e
+                self._last_errors.append(f"Failed to fetch devices for site {site_id}: {e}")
+
+        if not all_devices and self._last_errors:
+            raise RuntimeError(self._last_errors[0])
         return all_devices
+
+    def get_last_errors(self):
+        return list(self._last_errors)
