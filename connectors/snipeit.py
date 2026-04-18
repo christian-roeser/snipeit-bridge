@@ -46,6 +46,9 @@ class SnipeIT:
     def _patch(self, path, payload):
         return self._request("PATCH", path, json=payload)
 
+    def get_hardware_by_id(self, asset_id):
+        return self._get(f"/hardware/{asset_id}")
+
     def get_hardware_by_serial(self, serial):
         data = self._get("/hardware", params={"search": serial, "limit": 5})
         for item in data.get("rows", []):
@@ -71,6 +74,15 @@ class SnipeIT:
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
 
+    def _find_by_name(self, path, name, limit=500):
+        # Recovery scan when search/create returned no usable id (e.g. duplicate
+        # name with different attributes, or Snipe-IT returned 200 with error status).
+        data = self._get(path, params={"limit": limit})
+        for row in data.get("rows", []):
+            if row.get("name") == name:
+                return row.get("id")
+        return None
+
     def get_or_create_category(self, name, category_type="asset"):
         key = ("category", name)
         if key not in self._cache:
@@ -81,7 +93,10 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/categories", {"name": name, "category_type": category_type})
-                self._cache[key] = result.get("payload", {}).get("id")
+                cid = (result.get("payload") or {}).get("id")
+                if cid is None:
+                    cid = self._find_by_name("/categories", name)
+                self._cache[key] = cid
         return self._cache[key]
 
     def get_or_create_manufacturer(self, name):
@@ -94,7 +109,10 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/manufacturers", {"name": name})
-                self._cache[key] = result.get("payload", {}).get("id")
+                mid = (result.get("payload") or {}).get("id")
+                if mid is None:
+                    mid = self._find_by_name("/manufacturers", name)
+                self._cache[key] = mid
         return self._cache[key]
 
     def get_or_create_company(self, name):
@@ -109,12 +127,7 @@ class SnipeIT:
                 result = self._post("/companies", {"name": name})
                 cid = (result.get("payload") or {}).get("id")
                 if cid is None:
-                    # Name already exists but search missed it — scan all.
-                    all_data = self._get("/companies", params={"limit": 500})
-                    for c in all_data.get("rows", []):
-                        if c["name"] == name:
-                            cid = c["id"]
-                            break
+                    cid = self._find_by_name("/companies", name)
                 self._cache[key] = cid
         return self._cache[key]
 
@@ -149,5 +162,8 @@ class SnipeIT:
                 if model_number:
                     payload["model_number"] = model_number
                 result = self._post("/models", payload)
-                self._cache[key] = result.get("payload", {}).get("id")
+                mid = (result.get("payload") or {}).get("id")
+                if mid is None:
+                    mid = self._find_by_name("/models", name)
+                self._cache[key] = mid
         return self._cache[key]

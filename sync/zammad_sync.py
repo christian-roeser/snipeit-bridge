@@ -32,13 +32,13 @@ def run(snipeit, zammad, run_id):
         try:
             # marker (idempotency check) vs ticket_ref (human-readable line written to notes)
             ticket_ref = f"[Zammad #{ticket_id}] {ticket_title}"
-            # Read existing notes to append (avoid duplicate entries)
-            existing = snipeit.search_hardware(str(asset_id))
-            current_notes = ""
-            for hw in existing:
-                if hw.get("id") == asset_id:
-                    current_notes = hw.get("notes") or ""
-                    break
+            # Fetch asset by ID — search_hardware can't reliably find by numeric id.
+            try:
+                hw = snipeit.get_hardware_by_id(asset_id)
+            except Exception:
+                db.log(run_id, "WARN", f"Ticket #{ticket_id}: Snipe-IT asset #{asset_id} not found, skipping")
+                continue
+            current_notes = (hw or {}).get("notes") or ""
 
             # The marker string is the idempotency key — if it's already in the
             # notes the ticket was linked in a previous sync run; skip to avoid duplicates.
