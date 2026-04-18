@@ -16,6 +16,13 @@ def _shorten_lenovo_name(name):
     return re.sub(r'\s*-\s*Type\s+\S+$', '', model).strip() or name
 
 
+def _shorten_microsoft_name(name):
+    name = re.sub(r'\s+for\s+Business', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\s+with\s+(Intel|AMD|Qualcomm).*$', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\s+(\d+)(?:st|nd|rd|th)\s+Edition', r' \1', name, flags=re.IGNORECASE)
+    return name.strip()
+
+
 def _lenovo_model_name(serial, cache):
     if serial in cache:
         return cache[serial]
@@ -61,6 +68,9 @@ def _sync_devices(snipeit, intune, run_id):
         name = device.get("deviceName") or device.get("displayName") or serial
         manufacturer = device.get("manufacturer") or "Unknown"
         model_name = device.get("model") or "Unknown"
+
+        if manufacturer.lower() in ("microsoft", "microsoft corporation"):
+            model_name = _shorten_microsoft_name(model_name)
 
         if manufacturer.lower() == "lenovo" and serial:
             resolved = _lenovo_model_name(serial, lenovo_cache)
