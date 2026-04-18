@@ -68,11 +68,13 @@ def _sync_devices(snipeit, intune, run_id):
         name = device.get("deviceName") or device.get("displayName") or serial
         manufacturer = device.get("manufacturer") or "Unknown"
         model_name = device.get("model") or "Unknown"
+        model_number = None
 
         if manufacturer.lower() in ("microsoft", "microsoft corporation"):
             model_name = _shorten_microsoft_name(model_name)
 
         if manufacturer.lower() == "lenovo" and serial:
+            model_number = device.get("model") or None
             resolved = _lenovo_model_name(serial, lenovo_cache)
             if resolved:
                 model_name = resolved
@@ -84,7 +86,7 @@ def _sync_devices(snipeit, intune, run_id):
         try:
             category_id = snipeit.get_or_create_category("Intune Device")
             manufacturer_id = snipeit.get_or_create_manufacturer(manufacturer)
-            model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id)
+            model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id, model_number)
 
             payload = {
                 "name": name,

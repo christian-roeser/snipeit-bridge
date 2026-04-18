@@ -132,7 +132,7 @@ class SnipeIT:
     def update_user(self, user_id, payload):
         self._patch(f"/users/{user_id}", payload)
 
-    def get_or_create_model(self, name, manufacturer_id, category_id):
+    def get_or_create_model(self, name, manufacturer_id, category_id, model_number=None):
         key = ("model", name)
         if key not in self._cache:
             data = self._get("/models", params={"search": name, "limit": 10})
@@ -141,10 +141,13 @@ class SnipeIT:
                     self._cache[key] = m["id"]
                     break
             else:
-                result = self._post("/models", {
+                payload = {
                     "name": name,
                     "manufacturer_id": manufacturer_id,
                     "category_id": category_id,
-                })
+                }
+                if model_number:
+                    payload["model_number"] = model_number
+                result = self._post("/models", payload)
                 self._cache[key] = result.get("payload", {}).get("id")
         return self._cache[key]
