@@ -78,16 +78,18 @@ class SnipeIT:
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
 
+    @staticmethod
+    def _norm(s):
+        return " ".join((s or "").split()).casefold()
+
     def _find_by_name(self, path, name, limit=500):
         # Recovery scan when search/create returned no usable id. Comparison is
         # normalized (whitespace + case) because Snipe-IT may store names with
         # subtle differences (smart quotes, extra spaces) that break strict ==.
-        def norm(s):
-            return " ".join((s or "").split()).casefold()
-        target = norm(name)
+        target = self._norm(name)
         data = self._get(path, params={"limit": limit})
         for row in (data or {}).get("rows", []):
-            if norm(row.get("name")) == target:
+            if self._norm(row.get("name")) == target:
                 return row.get("id")
         return None
 
@@ -157,8 +159,9 @@ class SnipeIT:
         key = ("model", name)
         if key not in self._cache:
             data = self._get("/models", params={"search": name, "limit": 10})
+            target = self._norm(name)
             for m in (data or {}).get("rows", []):
-                if m["name"] == name:
+                if self._norm(m.get("name")) == target:
                     self._cache[key] = m["id"]
                     break
             else:
