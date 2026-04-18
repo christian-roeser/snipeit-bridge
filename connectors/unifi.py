@@ -35,34 +35,68 @@ class Unifi:
         return sites
 
     @staticmethod
-    def _is_not_found_error(err):
-        if isinstance(err, requests.HTTPError) and err.response is not None:
-            return err.response.status_code == 404
-        msg = str(err)
-        return "404" in msg and "Not Found" in msg
+    def _extract_host_id(site):
+        if not isinstance(site, dict):
+            return None
+        for key in ("hostId", "host_id"):
+            if site.get(key):
+                return site.get(key)
+        meta = site.get("meta") if isinstance(site.get("meta"), dict) else {}
+        for key in ("hostId", "host_id"):
+            if meta.get(key):
+                return meta.get(key)
+        return None
 
     def get_devices(self):
         sites = self._get_sites()
         self._last_errors = []
-        error_meta = []
-        all_devices = []
-        for site in sites:
-            site_id = site.get("siteId") or site.get("id")
-            try:
-                data = self._get(f"/v1/sites/{site_id}/devices")
-                for device in data.get("data", []):
-                    device["_site_id"] = site_id
-                    device["_site_name"] = site.get("name", site_id)
-                    all_devices.append(device)
-            except Exception as e:
-                msg = f"Failed to fetch devices for site {site_id}: {e}"
-                self._last_errors.append(msg)
-                error_meta.append((msg, self._is_not_found_error(e)))
+        if not sites:
+            return []
 
-        if not all_devices and self._last_errors:
-            for msg, is_not_found in error_meta:
-                if not is_not_found:
-                    raise RuntimeError(msg)
+        host_ids = []
+        host_to_site = {}
+        for site in sites:
+            host_id = self._extract_host_id(site)
+            if host_id:
+                host_ids.append(host_id)
+                host_to_site[host_id] = {
+                    "site_id": site.get("siteId") or site.get("id") or "",
+                    "site_name": site.get("name") or (site.get("siteId") or site.get("id") or ""),
+                }
+            else:
+                site_id = site.get("siteId") or site.get("id") or "unknown"
+                self._last_errors.append(f"Missing hostId for site {site_id}")
+
+        if not host_ids:
+            raise RuntimeError("No valid UniFi hostIds found for selected sites")
+
+        all_devices = []
+        next_token = None
+        while True:
+            params = {
+                "hostIds[]": host_ids,
+                "pageSize": "200",
+            }
+            if next_token:
+                params["nextToken"] = next_token
+
+            try:
+                data = self._get("/v1/devices", params=params)
+            except Exception as e:
+                raise RuntimeError(f"Failed to fetch Unifi devices: {e}") from e
+
+            rows = data.get("data", []) if isinstance(data, dict) else []
+            for device in rows:
+                device_host_id = device.get("hostId") or device.get("host_id")
+                site_info = host_to_site.get(device_host_id, {})
+                device["_site_id"] = site_info.get("site_id") or device.get("siteId") or device.get("site_id") or ""
+                device["_site_name"] = site_info.get("site_name") or device["_site_id"]
+                all_devices.append(device)
+
+            next_token = data.get("nextToken") if isinstance(data, dict) else None
+            if not next_token:
+                break
+
         return all_devices
 
     def get_last_errors(self):
