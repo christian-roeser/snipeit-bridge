@@ -88,10 +88,12 @@ def _sync_devices(snipeit, intune, run_id):
             manufacturer_id = snipeit.get_or_create_manufacturer(manufacturer)
             model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id, model_number)
 
+            owner_type = device.get("managedDeviceOwnerType", "")
             payload = {
                 "name": name,
                 "serial": serial,
                 "model_id": model_id,
+                "byod": owner_type.lower() == "personal",
             }
 
             # Always verify via API — local mapping may be stale after a purge.
