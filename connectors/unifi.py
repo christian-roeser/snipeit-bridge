@@ -19,8 +19,16 @@ class Unifi:
         self.base = url.rstrip("/")
         self.session = _session(api_key)
         # sites: "ALL" or comma-separated site IDs
-        self.site_filter = None if sites.upper() == "ALL" else [s.strip() for s in sites.split(",")]
+        self.site_filter = None if sites.upper() == "ALL" else [self._clean_filter_value(s) for s in sites.split(",")]
         self._last_errors = []
+
+    @staticmethod
+    def _clean_filter_value(value):
+        return (value or "").strip().strip('"').strip("'")
+
+    @staticmethod
+    def _norm(value):
+        return (value or "").strip().casefold()
 
     def _get(self, path, params=None):
         r = self.session.get(f"{self.base}{path}", params=params, timeout=30)
@@ -31,7 +39,14 @@ class Unifi:
         data = self._get("/v1/sites")
         sites = data.get("data", [])
         if self.site_filter:
-            sites = [s for s in sites if s.get("siteId") in self.site_filter or s.get("name") in self.site_filter]
+            filter_set = {self._norm(v) for v in self.site_filter if v}
+            before_count = len(sites)
+            sites = [
+                s for s in sites
+                if self._norm(s.get("siteId")) in filter_set or self._norm(s.get("name")) in filter_set
+            ]
+            if before_count and not sites:
+                self._last_errors.append("UNIFI_SITES filter matched no sites")
         return sites
 
     @staticmethod
@@ -65,8 +80,8 @@ class Unifi:
         yield row
 
     def get_devices(self):
-        sites = self._get_sites()
         self._last_errors = []
+        sites = self._get_sites()
         if not sites:
             return []
 

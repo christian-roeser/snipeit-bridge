@@ -95,3 +95,44 @@ def test_get_devices_flattens_wrapped_host_payload():
     assert len(devices) == 2
     assert devices[0]["hostId"] == "host-a"
     assert devices[0]["_site_id"] == "site-a"
+
+
+def test_site_filter_name_matching_is_case_insensitive_and_trimmed():
+    unifi = Unifi("https://api.ui.com", "test-key", sites=" office  , 'warehouse' ")
+
+    def fake_get(path, params=None):
+        if path == "/v1/sites":
+            return {
+                "data": [
+                    {"siteId": "site-1", "name": "Office", "hostId": "host-1"},
+                    {"siteId": "site-2", "name": "Warehouse", "hostId": "host-2"},
+                    {"siteId": "site-3", "name": "Lab", "hostId": "host-3"},
+                ]
+            }
+        if path == "/v1/devices":
+            assert set(params["hostIds[]"]) == {"host-1", "host-2"}
+            return {"data": []}
+        raise AssertionError(f"Unexpected path: {path}")
+
+    unifi._get = fake_get
+
+    devices = unifi.get_devices()
+
+    assert devices == []
+    assert unifi.get_last_errors() == []
+
+
+def test_site_filter_warns_when_no_sites_match():
+    unifi = Unifi("https://api.ui.com", "test-key", sites="DoesNotExist")
+
+    def fake_get(path, params=None):
+        if path == "/v1/sites":
+            return {"data": [{"siteId": "site-1", "name": "Office", "hostId": "host-1"}]}
+        raise AssertionError(f"Unexpected path: {path}")
+
+    unifi._get = fake_get
+
+    devices = unifi.get_devices()
+
+    assert devices == []
+    assert "UNIFI_SITES filter matched no sites" in unifi.get_last_errors()
