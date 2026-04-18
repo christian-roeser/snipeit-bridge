@@ -23,8 +23,7 @@ def _shorten_microsoft_name(name):
     return name.strip()
 
 
-def _lenovo_lookup(serial, cache):
-    """Returns (name, image_url) for a Lenovo serial, cached per sync run."""
+def _lenovo_model_name(serial, cache):
     if serial in cache:
         return cache[serial]
     try:
@@ -36,16 +35,14 @@ def _lenovo_lookup(serial, cache):
         )
         if r.ok:
             data = r.json()
-            item = data[0] if isinstance(data, list) and data else {}
-            raw = item.get("Name")
+            raw = data[0].get("Name") if isinstance(data, list) and data else None
             name = _shorten_lenovo_name(raw) if raw else None
-            image_url = item.get("Image") or None
-            cache[serial] = (name, image_url)
-            return (name, image_url)
+            cache[serial] = name
+            return name
     except Exception:
         pass
-    cache[serial] = (None, None)
-    return (None, None)
+    cache[serial] = None
+    return None
 
 
 def run(snipeit, intune, run_id):
@@ -76,12 +73,11 @@ def _sync_devices(snipeit, intune, run_id):
         if manufacturer.lower() in ("microsoft", "microsoft corporation"):
             model_name = _shorten_microsoft_name(model_name)
 
-        image_url = None
         if manufacturer.lower() == "lenovo" and serial:
             model_number = device.get("model") or None
-            resolved_name, image_url = _lenovo_lookup(serial, lenovo_cache)
-            if resolved_name:
-                model_name = resolved_name
+            resolved = _lenovo_model_name(serial, lenovo_cache)
+            if resolved:
+                model_name = resolved
 
         if not serial:
             db.log(run_id, "WARN", f"Skipping device '{name}' — no serial number")
@@ -90,7 +86,7 @@ def _sync_devices(snipeit, intune, run_id):
         try:
             category_id = snipeit.get_or_create_category("Intune Device")
             manufacturer_id = snipeit.get_or_create_manufacturer(manufacturer)
-            model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id, model_number, image_url)
+            model_id = snipeit.get_or_create_model(model_name, manufacturer_id, category_id, model_number)
 
             payload = {
                 "name": name,
