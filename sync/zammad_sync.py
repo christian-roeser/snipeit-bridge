@@ -1,5 +1,6 @@
 import time
 import db
+from config import config
 
 # Name of the Zammad ticket custom field that holds a Snipe-IT asset ID
 ZAMMAD_ASSET_FIELD = "snipeit_asset_id"
@@ -30,7 +31,6 @@ def run(snipeit, zammad, run_id):
             continue
 
         try:
-            # marker (idempotency check) vs ticket_ref (human-readable line written to notes)
             ticket_ref = f"[Zammad #{ticket_id}] {ticket_title}"
             # Fetch asset by ID — search_hardware can't reliably find by numeric id.
             try:
@@ -40,12 +40,12 @@ def run(snipeit, zammad, run_id):
                 continue
             current_notes = (hw or {}).get("notes") or ""
 
-            # The marker string is the idempotency key — if it's already in the
-            # notes the ticket was linked in a previous sync run; skip to avoid duplicates.
-            marker = f"[Zammad #{ticket_id}]"
-            if marker not in current_notes:
+            if not db.has_zammad_link(asset_id, ticket_id):
                 new_notes = (current_notes + "\n" + ticket_ref).strip()
+                if len(new_notes) > config.ZAMMAD_NOTES_MAX_LENGTH:
+                    new_notes = new_notes[-config.ZAMMAD_NOTES_MAX_LENGTH:]
                 snipeit.update_hardware(asset_id, {"notes": new_notes})
+                db.add_zammad_link(asset_id, ticket_id)
                 db.log(run_id, "INFO", f"Linked Zammad ticket #{ticket_id} to Snipe-IT asset #{asset_id}")
                 items += 1
             else:

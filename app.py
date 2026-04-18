@@ -5,6 +5,10 @@ from flask import (
 from functools import wraps
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import db
 import config as cfg
@@ -18,6 +22,29 @@ from sync import intune_sync, unifi_sync, proxmox_sync, zammad_sync
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=config.SESSION_COOKIE_SECURE,
+    RATELIMIT_STORAGE_URI=config.RATELIMIT_STORAGE_URI,
+)
+if config.TRUST_PROXY:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+def _validate_security_config():
+    if not config.SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be set")
+    if not config.DASHBOARD_PASSWORD:
+        raise RuntimeError("DASHBOARD_PASSWORD must be set")
+    if config.WORKER_COUNT > 1 and config.RATELIMIT_STORAGE_URI == "memory://":
+        raise RuntimeError("RATELIMIT_STORAGE_URI must not be memory:// when using multiple workers")
+
+
+_validate_security_config()
+
+csrf = CSRFProtect(app)
+limiter = Limiter(key_func=get_remote_address, app=app, default_limits=[])
 
 LOCAL_TZ = ZoneInfo("Europe/Berlin")
 
@@ -61,10 +88,12 @@ def _snipeit():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit(config.LOGIN_RATE_LIMIT)
 def login():
     if request.method == "POST":
         if (request.form.get("username") == config.DASHBOARD_USER and
                 request.form.get("password") == config.DASHBOARD_PASSWORD):
+            session.clear()
             session["logged_in"] = True
             return redirect(url_for("dashboard"))
         flash("Invalid credentials", "danger")
@@ -106,6 +135,7 @@ def _is_configured(source):
 
 @app.route("/sync/<source>", methods=["POST"])
 @login_required
+@limiter.limit(config.SYNC_RATE_LIMIT)
 def sync(source):
     if source not in SOURCES:
         flash(f"Unknown source: {source}", "danger")
@@ -116,6 +146,10 @@ def sync(source):
         return redirect(url_for("dashboard"))
 
     run_id = db.begin_run(source)
+    if run_id is None:
+        flash(f"Sync for '{source}' is already running", "warning")
+        return redirect(url_for("dashboard"))
+
     items = 0
     error = None
 
@@ -140,8 +174,9 @@ def sync(source):
         status = "partial" if db.has_errors(run_id) else "success"
         db.end_run(run_id, status, items)
     except Exception as e:
-        error = str(e)
-        db.log(run_id, "ERROR", f"Unhandled error: {e}")
+        error = "Sync failed. See logs for details."
+        db.log(run_id, "ERROR", f"Unhandled error ({type(e).__name__})")
+        app.logger.exception("Unhandled sync error for source '%s'", source)
         db.end_run(run_id, "error", items, error)
 
     return redirect(url_for("dashboard"))
@@ -195,9 +230,12 @@ def show_config():
 @app.route("/api/assets")
 # No @login_required — Zammad's External Data Source feature calls this without
 # session cookies. Keep it read-only (search only, no writes).
+@limiter.limit(config.ASSET_API_RATE_LIMIT)
 def api_assets():
     """Public endpoint consumed by Zammad as External Data Source."""
     query = request.args.get("search", "").strip()
+    if len(query) > config.ASSET_API_MAX_SEARCH_LENGTH:
+        return jsonify({"error": "Search query too long"}), 400
     if not query or not config.SNIPEIT_URL or not config.SNIPEIT_TOKEN:
         return jsonify([])
     try:
@@ -217,8 +255,8 @@ def api_assets():
                 "label": " | ".join(filter(None, label_parts)),
             })
         return jsonify(payload)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Asset search failed"}), 500
 
 
 if __name__ == "__main__":

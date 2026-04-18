@@ -89,6 +89,7 @@
       <div class="card-footer d-flex align-items-center gap-2">
         <form method="post" action="{{ url_for('sync', source=source) }}" class="d-inline"
               onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>Läuft…'">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-sm fw-medium"
             style="background:{{ m.color }};color:#fff;border:none"
             {% if not info.configured %}disabled title="Connector nicht konfiguriert"{% endif %}>

@@ -38,6 +38,18 @@ def init_db():
                 last_synced TEXT NOT NULL,
                 UNIQUE(source, source_id)
             );
+            CREATE TABLE IF NOT EXISTS zammad_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                snipeit_id INTEGER NOT NULL,
+                ticket_id INTEGER NOT NULL,
+                linked_at TEXT NOT NULL,
+                UNIQUE(snipeit_id, ticket_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_sync_log_run_id ON sync_log(run_id);
+            CREATE INDEX IF NOT EXISTS idx_asset_mapping_source ON asset_mapping(source, source_id);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_runs_source_running
+                ON sync_runs(source)
+                WHERE status='running';
         """)
         # Syncs run synchronously in the request thread — any "running" row at
         # startup is an orphan from a crashed/killed process and will never finish.
@@ -51,11 +63,14 @@ def init_db():
 def begin_run(source):
     now = datetime.now(timezone.utc).isoformat()
     with _conn() as conn:
-        cur = conn.execute(
-            "INSERT INTO sync_runs (source, started_at, status) VALUES (?, ?, 'running')",
-            (source, now),
-        )
-        return cur.lastrowid
+        try:
+            cur = conn.execute(
+                "INSERT INTO sync_runs (source, started_at, status) VALUES (?, ?, 'running')",
+                (source, now),
+            )
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            return None
 
 
 def end_run(run_id, status, items=0, error=None):
@@ -135,3 +150,23 @@ def get_logs(run_id):
             "SELECT * FROM sync_log WHERE run_id=? ORDER BY id ASC",
             (run_id,),
         ).fetchall()
+
+
+def has_zammad_link(snipeit_id, ticket_id):
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM zammad_links WHERE snipeit_id=? AND ticket_id=? LIMIT 1",
+            (snipeit_id, ticket_id),
+        ).fetchone()
+        return row is not None
+
+
+def add_zammad_link(snipeit_id, ticket_id):
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO zammad_links (snipeit_id, ticket_id, linked_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(snipeit_id, ticket_id) DO NOTHING""",
+            (snipeit_id, ticket_id, now),
+        )

@@ -70,7 +70,7 @@ UNIFI_SITES=ALL          # oder kommagetrennte Site-IDs: site1,site2
 PROXMOX_URL=https://proxmox.example.com:8006
 PROXMOX_TOKEN_ID=user@pam!tokenname
 PROXMOX_TOKEN_SECRET=your-token-secret
-PROXMOX_VERIFY_SSL=false
+PROXMOX_VERIFY_SSL=true
 
 # Zammad
 ZAMMAD_URL=https://zammad.example.com
@@ -78,8 +78,79 @@ ZAMMAD_TOKEN=your-api-token
 
 # Dashboard
 DASHBOARD_USER=admin
-DASHBOARD_PASSWORD=changeme
-SECRET_KEY=change-this-to-a-random-string
+DASHBOARD_PASSWORD=your-strong-password
+SECRET_KEY=change-this-to-a-long-random-string
+SESSION_COOKIE_SECURE=true
+TRUST_PROXY=false
+RATELIMIT_STORAGE_URI=memory://
+LOGIN_RATE_LIMIT=10 per minute
+SYNC_RATE_LIMIT=5 per minute
+ASSET_API_RATE_LIMIT=30 per minute
+ASSET_API_MAX_SEARCH_LENGTH=100
+ZAMMAD_NOTES_MAX_LENGTH=4000
+```
+
+Für Produktion hinter HTTPS-Reverse-Proxy (z. B. Nginx/Traefik):
+- `SESSION_COOKIE_SECURE=true`
+- `TRUST_PROXY=true`
+- Bei mehreren App-Workern `RATELIMIT_STORAGE_URI` auf ein gemeinsames Backend setzen (z. B. Redis).
+
+Beispiel Redis für Rate Limits (mehrere Worker):
+
+```env
+RATELIMIT_STORAGE_URI=redis://127.0.0.1:6379/0
+```
+
+Beispiel Redis mit Passwort:
+
+```env
+RATELIMIT_STORAGE_URI=redis://:strong-redis-password@127.0.0.1:6379/0
+```
+
+Beispiel docker-compose (nur Redis):
+
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+```
+
+Beispiel docker-compose (Redis mit Passwort):
+
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "strong-redis-password"]
+    ports:
+      - "6379:6379"
+```
+
+Beispiel Nginx (HTTPS-Termination):
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+}
+```
+
+Beispiel Traefik (Docker labels):
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.http.routers.snipeit-bridge.rule=Host(`bridge.example.com`)
+  - traefik.http.routers.snipeit-bridge.entrypoints=websecure
+  - traefik.http.routers.snipeit-bridge.tls=true
+  - traefik.http.services.snipeit-bridge.loadbalancer.server.port=5000
 ```
 
 ---
