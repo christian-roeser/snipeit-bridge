@@ -78,7 +78,10 @@ class SnipeIT:
         return asset_id
 
     def update_hardware(self, asset_id, payload):
-        self._patch(f"/hardware/{asset_id}", payload)
+        result = self._patch(f"/hardware/{asset_id}", payload)
+        if isinstance(result, dict) and str(result.get("status", "")).lower() == "error":
+            msg = result.get("messages") or result.get("error") or result
+            raise RuntimeError(f"Snipe-IT rejected hardware update for {asset_id}: {msg}")
 
     @staticmethod
     def _norm(s):
