@@ -31,7 +31,7 @@ def test_get_devices_skips_failing_sites_when_others_succeed():
     assert "site-404" in errors[0]
 
 
-def test_get_devices_raises_when_all_sites_fail():
+def test_get_devices_returns_empty_when_all_sites_fail_with_404():
     unifi = Unifi("https://api.ui.com", "test-key")
 
     def fake_get(path, params=None):
@@ -43,5 +43,25 @@ def test_get_devices_raises_when_all_sites_fail():
 
     unifi._get = fake_get
 
-    with pytest.raises(RuntimeError, match="Failed to fetch devices for site site-404"):
+    devices = unifi.get_devices()
+
+    assert devices == []
+    errors = unifi.get_last_errors()
+    assert len(errors) == 1
+    assert "site-404" in errors[0]
+
+
+def test_get_devices_raises_when_all_sites_fail_with_non_404():
+    unifi = Unifi("https://api.ui.com", "test-key")
+
+    def fake_get(path, params=None):
+        if path == "/v1/sites":
+            return {"data": [{"siteId": "site-500", "name": "Broken"}]}
+        if path == "/v1/sites/site-500/devices":
+            raise RuntimeError("500 Server Error: Internal Server Error")
+        raise AssertionError(f"Unexpected path: {path}")
+
+    unifi._get = fake_get
+
+    with pytest.raises(RuntimeError, match="Failed to fetch devices for site site-500"):
         unifi.get_devices()

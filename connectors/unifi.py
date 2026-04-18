@@ -34,9 +34,17 @@ class Unifi:
             sites = [s for s in sites if s.get("siteId") in self.site_filter or s.get("name") in self.site_filter]
         return sites
 
+    @staticmethod
+    def _is_not_found_error(err):
+        if isinstance(err, requests.HTTPError) and err.response is not None:
+            return err.response.status_code == 404
+        msg = str(err)
+        return "404" in msg and "Not Found" in msg
+
     def get_devices(self):
         sites = self._get_sites()
         self._last_errors = []
+        error_meta = []
         all_devices = []
         for site in sites:
             site_id = site.get("siteId") or site.get("id")
@@ -47,10 +55,14 @@ class Unifi:
                     device["_site_name"] = site.get("name", site_id)
                     all_devices.append(device)
             except Exception as e:
-                self._last_errors.append(f"Failed to fetch devices for site {site_id}: {e}")
+                msg = f"Failed to fetch devices for site {site_id}: {e}"
+                self._last_errors.append(msg)
+                error_meta.append((msg, self._is_not_found_error(e)))
 
         if not all_devices and self._last_errors:
-            raise RuntimeError(self._last_errors[0])
+            for msg, is_not_found in error_meta:
+                if not is_not_found:
+                    raise RuntimeError(msg)
         return all_devices
 
     def get_last_errors(self):
