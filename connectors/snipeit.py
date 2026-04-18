@@ -1,5 +1,6 @@
 import time
 import re
+import html
 import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -81,7 +82,8 @@ class SnipeIT:
 
     @staticmethod
     def _norm(s):
-        return " ".join((s or "").split()).casefold()
+        # html.unescape: Snipe-IT stores names with HTML-encoded chars (e.g. &quot;).
+        return " ".join(html.unescape(s or "").split()).casefold()
 
     def _find_by_name(self, path, name, page_size=500):
         # Recovery scan when search/create returned no usable id. Paginates the
@@ -139,8 +141,9 @@ class SnipeIT:
 
     @staticmethod
     def _norm_model_name(s):
-        # Ignore punctuation/spacing differences like ')(' vs ') (' in model names.
-        return re.sub(r"[^\w]+", "", (s or "").casefold())
+        # Ignore punctuation/spacing differences like ')(' vs ') (' and decode
+        # HTML entities (Snipe-IT stores quotes as &quot; etc.).
+        return re.sub(r"[^\w]+", "", html.unescape(s or "").casefold())
 
     def _find_model_by_name(self, name, page_size=500):
         target = self._norm_model_name(name)
