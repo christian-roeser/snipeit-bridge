@@ -67,7 +67,7 @@ def _sync_devices(snipeit, intune, run_id):
         serial = device.get("serialNumber", "").strip()
         name = device.get("deviceName") or device.get("displayName") or serial
         manufacturer = device.get("manufacturer") or "Unknown"
-        model_name = device.get("model") or "Unknown"
+        model_name = (device.get("model") or "").strip()
         model_number = None
 
         if manufacturer.lower() in ("microsoft", "microsoft corporation"):
@@ -81,6 +81,10 @@ def _sync_devices(snipeit, intune, run_id):
 
         if not serial:
             db.log(run_id, "WARN", f"Skipping device '{name}' — no serial number")
+            continue
+
+        if not model_name or not model_name.strip():
+            db.log(run_id, "WARN", f"Skipping device '{name}' (serial={serial}) — no model name from Intune")
             continue
 
         try:

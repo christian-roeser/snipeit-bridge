@@ -87,6 +87,15 @@ class SnipeIT:
                 return row.get("id")
         return None
 
+    def _created_id(self, result, path, name):
+        rid = ((result or {}).get("payload") or {}).get("id")
+        if rid is None:
+            rid = self._find_by_name(path, name)
+        if rid is None:
+            msg = (result or {}).get("messages") or (result or {}).get("error") or result
+            raise RuntimeError(f"Snipe-IT rejected {path} create for '{name}': {msg}")
+        return rid
+
     def get_or_create_category(self, name, category_type="asset"):
         key = ("category", name)
         if key not in self._cache:
@@ -97,10 +106,7 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/categories", {"name": name, "category_type": category_type})
-                cid = ((result or {}).get("payload") or {}).get("id")
-                if cid is None:
-                    cid = self._find_by_name("/categories", name)
-                self._cache[key] = cid
+                self._cache[key] = self._created_id(result, "/categories", name)
         return self._cache[key]
 
     def get_or_create_manufacturer(self, name):
@@ -113,10 +119,7 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/manufacturers", {"name": name})
-                mid = ((result or {}).get("payload") or {}).get("id")
-                if mid is None:
-                    mid = self._find_by_name("/manufacturers", name)
-                self._cache[key] = mid
+                self._cache[key] = self._created_id(result, "/manufacturers", name)
         return self._cache[key]
 
     def get_or_create_company(self, name):
@@ -129,10 +132,7 @@ class SnipeIT:
                     break
             else:
                 result = self._post("/companies", {"name": name})
-                cid = ((result or {}).get("payload") or {}).get("id")
-                if cid is None:
-                    cid = self._find_by_name("/companies", name)
-                self._cache[key] = cid
+                self._cache[key] = self._created_id(result, "/companies", name)
         return self._cache[key]
 
     def get_user_by_username(self, username):
@@ -166,8 +166,5 @@ class SnipeIT:
                 if model_number:
                     payload["model_number"] = model_number
                 result = self._post("/models", payload)
-                mid = ((result or {}).get("payload") or {}).get("id")
-                if mid is None:
-                    mid = self._find_by_name("/models", name)
-                self._cache[key] = mid
+                self._cache[key] = self._created_id(result, "/models", name)
         return self._cache[key]
