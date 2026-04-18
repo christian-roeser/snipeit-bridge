@@ -103,3 +103,47 @@ def test_run_uses_serial_lookup_fallback(monkeypatch):
 
     assert items == 1
     assert snipeit.updated is True
+
+
+def test_run_recreates_asset_when_mapped_id_is_stale(monkeypatch):
+    class FakeUnifi:
+        def get_devices(self):
+            return [{"mac": "aa:bb:cc:dd:ee:ff", "name": "AP-1", "model": "U7"}]
+
+        def get_last_errors(self):
+            return []
+
+    class FakeSnipeit:
+        def __init__(self):
+            self.created = False
+
+        def get_or_create_category(self, _):
+            return 1
+
+        def get_or_create_manufacturer(self, _):
+            return 2
+
+        def get_or_create_model(self, *_):
+            return 3
+
+        def get_hardware_by_serial(self, _):
+            return None
+
+        def update_hardware(self, *_):
+            raise RuntimeError("404 not found")
+
+        def create_hardware(self, payload):
+            self.created = True
+            assert payload["serial"] == "AA:BB:CC:DD:EE:FF"
+            return 321
+
+    monkeypatch.setattr(unifi_sync.time, "sleep", lambda _: None)
+    monkeypatch.setattr(unifi_sync.db, "log", lambda *args, **kwargs: None)
+    monkeypatch.setattr(unifi_sync.db, "get_mapping", lambda *args, **kwargs: 999)
+    monkeypatch.setattr(unifi_sync.db, "set_mapping", lambda *args, **kwargs: None)
+
+    snipeit = FakeSnipeit()
+    items = unifi_sync.run(snipeit, FakeUnifi(), run_id=1)
+
+    assert items == 1
+    assert snipeit.created is True

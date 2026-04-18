@@ -67,10 +67,15 @@ def run(snipeit, unifi, run_id):
                 existing_id = existing["id"] if existing else None
 
             if existing_id:
-                snipeit.update_hardware(existing_id, payload)
-                db.set_mapping("unifi", mac, existing_id)
-                db.log(run_id, "INFO", f"Updated Unifi device '{name}' (mac={mac}, id={existing_id})")
-            else:
+                try:
+                    snipeit.update_hardware(existing_id, payload)
+                    db.set_mapping("unifi", mac, existing_id)
+                    db.log(run_id, "INFO", f"Updated Unifi device '{name}' (mac={mac}, id={existing_id})")
+                except Exception:
+                    # Mapping may reference an asset that was deleted in Snipe-IT.
+                    existing_id = None
+
+            if not existing_id:
                 new_id = snipeit.create_hardware({**payload, "status_id": 1})
                 if new_id:
                     db.set_mapping("unifi", mac, new_id)
