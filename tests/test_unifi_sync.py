@@ -105,7 +105,7 @@ def test_run_uses_serial_lookup_fallback(monkeypatch):
     assert snipeit.updated is True
 
 
-def test_run_recreates_asset_when_mapped_id_is_stale(monkeypatch):
+def test_run_creates_asset_when_local_mapping_is_stale(monkeypatch):
     class FakeUnifi:
         def get_devices(self):
             return [{"mac": "aa:bb:cc:dd:ee:ff", "name": "AP-1", "model": "U7"}]
@@ -130,7 +130,7 @@ def test_run_recreates_asset_when_mapped_id_is_stale(monkeypatch):
             return None
 
         def update_hardware(self, *_):
-            raise RuntimeError("404 not found")
+            raise AssertionError("update_hardware should not be called")
 
         def create_hardware(self, payload):
             self.created = True
@@ -139,7 +139,11 @@ def test_run_recreates_asset_when_mapped_id_is_stale(monkeypatch):
 
     monkeypatch.setattr(unifi_sync.time, "sleep", lambda _: None)
     monkeypatch.setattr(unifi_sync.db, "log", lambda *args, **kwargs: None)
-    monkeypatch.setattr(unifi_sync.db, "get_mapping", lambda *args, **kwargs: 999)
+    monkeypatch.setattr(
+        unifi_sync.db,
+        "get_mapping",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("get_mapping should not be called")),
+    )
     monkeypatch.setattr(unifi_sync.db, "set_mapping", lambda *args, **kwargs: None)
 
     snipeit = FakeSnipeit()

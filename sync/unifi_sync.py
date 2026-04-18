@@ -61,10 +61,9 @@ def run(snipeit, unifi, run_id):
                 "model_id": model_id,
             }
 
-            existing_id = db.get_mapping("unifi", mac)
-            if existing_id is None:
-                existing = snipeit.get_hardware_by_serial(serial)
-                existing_id = existing["id"] if existing else None
+            # Like Intune sync, always verify existence via API.
+            existing = snipeit.get_hardware_by_serial(serial)
+            existing_id = existing["id"] if existing else None
 
             if existing_id:
                 try:
