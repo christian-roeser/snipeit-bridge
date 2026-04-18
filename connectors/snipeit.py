@@ -51,25 +51,25 @@ class SnipeIT:
 
     def get_hardware_by_serial(self, serial):
         data = self._get("/hardware", params={"search": serial, "limit": 5})
-        for item in data.get("rows", []):
+        for item in (data or {}).get("rows", []):
             if item.get("serial") == serial:
                 return item
         return None
 
     def get_hardware_by_asset_tag(self, tag):
         data = self._get("/hardware", params={"search": tag, "limit": 5})
-        for item in data.get("rows", []):
+        for item in (data or {}).get("rows", []):
             if item.get("asset_tag") == tag:
                 return item
         return None
 
     def search_hardware(self, query):
         data = self._get("/hardware", params={"search": query, "limit": 50})
-        return data.get("rows", [])
+        return (data or {}).get("rows", [])
 
     def create_hardware(self, payload):
         result = self._post("/hardware", payload)
-        return result.get("payload", {}).get("id")
+        return (result or {}).get("payload", {}).get("id")
 
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
@@ -78,7 +78,7 @@ class SnipeIT:
         # Recovery scan when search/create returned no usable id (e.g. duplicate
         # name with different attributes, or Snipe-IT returned 200 with error status).
         data = self._get(path, params={"limit": limit})
-        for row in data.get("rows", []):
+        for row in (data or {}).get("rows", []):
             if row.get("name") == name:
                 return row.get("id")
         return None
@@ -87,13 +87,13 @@ class SnipeIT:
         key = ("category", name)
         if key not in self._cache:
             data = self._get("/categories", params={"search": name, "limit": 10})
-            for cat in data.get("rows", []):
+            for cat in (data or {}).get("rows", []):
                 if cat["name"] == name:
                     self._cache[key] = cat["id"]
                     break
             else:
                 result = self._post("/categories", {"name": name, "category_type": category_type})
-                cid = (result.get("payload") or {}).get("id")
+                cid = ((result or {}).get("payload") or {}).get("id")
                 if cid is None:
                     cid = self._find_by_name("/categories", name)
                 self._cache[key] = cid
@@ -103,13 +103,13 @@ class SnipeIT:
         key = ("manufacturer", name)
         if key not in self._cache:
             data = self._get("/manufacturers", params={"search": name, "limit": 10})
-            for m in data.get("rows", []):
+            for m in (data or {}).get("rows", []):
                 if m["name"] == name:
                     self._cache[key] = m["id"]
                     break
             else:
                 result = self._post("/manufacturers", {"name": name})
-                mid = (result.get("payload") or {}).get("id")
+                mid = ((result or {}).get("payload") or {}).get("id")
                 if mid is None:
                     mid = self._find_by_name("/manufacturers", name)
                 self._cache[key] = mid
@@ -119,13 +119,13 @@ class SnipeIT:
         key = ("company", name)
         if key not in self._cache:
             data = self._get("/companies", params={"search": name, "limit": 10})
-            for c in data.get("rows", []):
+            for c in (data or {}).get("rows", []):
                 if c["name"] == name:
                     self._cache[key] = c["id"]
                     break
             else:
                 result = self._post("/companies", {"name": name})
-                cid = (result.get("payload") or {}).get("id")
+                cid = ((result or {}).get("payload") or {}).get("id")
                 if cid is None:
                     cid = self._find_by_name("/companies", name)
                 self._cache[key] = cid
@@ -133,14 +133,14 @@ class SnipeIT:
 
     def get_user_by_username(self, username):
         data = self._get("/users", params={"search": username, "limit": 10})
-        for user in data.get("rows", []):
+        for user in (data or {}).get("rows", []):
             if user.get("username") == username:
                 return user
         return None
 
     def create_user(self, payload):
         result = self._post("/users", payload)
-        return result.get("payload", {}).get("id")
+        return (result or {}).get("payload", {}).get("id")
 
     def update_user(self, user_id, payload):
         self._patch(f"/users/{user_id}", payload)
@@ -149,7 +149,7 @@ class SnipeIT:
         key = ("model", name)
         if key not in self._cache:
             data = self._get("/models", params={"search": name, "limit": 10})
-            for m in data.get("rows", []):
+            for m in (data or {}).get("rows", []):
                 if m["name"] == name:
                     self._cache[key] = m["id"]
                     break
@@ -162,7 +162,7 @@ class SnipeIT:
                 if model_number:
                     payload["model_number"] = model_number
                 result = self._post("/models", payload)
-                mid = (result.get("payload") or {}).get("id")
+                mid = ((result or {}).get("payload") or {}).get("id")
                 if mid is None:
                     mid = self._find_by_name("/models", name)
                 self._cache[key] = mid
