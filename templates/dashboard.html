@@ -43,10 +43,10 @@
       <div class="card-body py-3">
         {% if info.last_run %}
           {% set run = info.last_run %}
-          <div class="d-flex gap-4">
+          <div class="d-flex gap-4 flex-wrap">
             <div>
               <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Letzter Sync</div>
-              <div style="font-size:.85rem">{{ run.started_at[:16].replace("T", " ") }}</div>
+              <div style="font-size:.85rem">{{ run.started_at | localtime }}</div>
             </div>
             <div>
               <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Status</div>
@@ -55,8 +55,12 @@
               {% elif run.status == "error" %}
                 <span class="badge" style="background:#fdecea;color:#c0392b"><i class="bi bi-x-circle me-1"></i>Fehler</span>
               {% else %}
-                <span class="badge bg-primary">{{ run.status }}</span>
+                <span class="badge bg-primary"><span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;border-width:.15em"></span>Läuft</span>
               {% endif %}
+            </div>
+            <div>
+              <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Dauer</div>
+              <div style="font-size:.85rem">{{ run.started_at | duration(run.finished_at) or "—" }}</div>
             </div>
             <div>
               <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Elemente</div>
@@ -66,6 +70,11 @@
           {% if run.error_msg %}
             <div class="mt-2 p-2 rounded" style="background:#fdecea;font-size:.78rem;color:#c0392b">
               <i class="bi bi-exclamation-triangle me-1"></i>{{ run.error_msg }}
+            </div>
+          {% endif %}
+          {% if info.last_success %}
+            <div class="mt-2 text-muted" style="font-size:.75rem">
+              <i class="bi bi-check2 me-1"></i>Zuletzt erfolgreich: {{ info.last_success.started_at | localtime }}
             </div>
           {% endif %}
         {% else %}

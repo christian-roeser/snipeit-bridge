@@ -112,6 +112,14 @@ def get_last_run(source):
         ).fetchone()
 
 
+def get_last_successful_run(source):
+    with _conn() as conn:
+        return conn.execute(
+            "SELECT * FROM sync_runs WHERE source=? AND status='success' ORDER BY started_at DESC LIMIT 1",
+            (source,),
+        ).fetchone()
+
+
 def get_logs(run_id):
     with _conn() as conn:
         return conn.execute(

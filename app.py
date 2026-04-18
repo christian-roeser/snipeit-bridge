@@ -3,6 +3,8 @@ from flask import (
     session, flash, jsonify,
 )
 from functools import wraps
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import db
 import config as cfg
@@ -16,6 +18,27 @@ from sync import intune_sync, unifi_sync, proxmox_sync, zammad_sync
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+
+LOCAL_TZ = ZoneInfo("Europe/Berlin")
+
+
+@app.template_filter("localtime")
+def _localtime(iso):
+    if not iso:
+        return ""
+    return datetime.fromisoformat(iso).astimezone(LOCAL_TZ).strftime("%d.%m.%Y %H:%M")
+
+
+@app.template_filter("duration")
+def _duration(start_iso, end_iso):
+    if not start_iso or not end_iso:
+        return ""
+    delta = datetime.fromisoformat(end_iso) - datetime.fromisoformat(start_iso)
+    secs = int(delta.total_seconds())
+    if secs < 60:
+        return f"{secs}s"
+    return f"{secs // 60}m {secs % 60}s"
+
 
 db.init_db()
 
@@ -57,12 +80,13 @@ def logout():
 @app.route("/")
 @login_required
 def dashboard():
-    last_runs = {source: db.get_last_run(source) for source in SOURCES}
     connector_status = {}
     for source in SOURCES:
-        run = last_runs[source]
+        run = db.get_last_run(source)
+        last_success = db.get_last_successful_run(source) if (run and run["status"] != "success") else None
         connector_status[source] = {
             "last_run": dict(run) if run else None,
+            "last_success": dict(last_success) if last_success else None,
             "configured": _is_configured(source),
         }
     return render_template("dashboard.html", connector_status=connector_status)

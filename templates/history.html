@@ -18,6 +18,7 @@
           <th>Quelle</th>
           <th>Gestartet</th>
           <th>Abgeschlossen</th>
+          <th>Dauer</th>
           <th>Status</th>
           <th>Elemente</th>
           <th class="pe-4"></th>
@@ -32,18 +33,19 @@
               {{ run.source }}
             </span>
           </td>
-          <td style="font-size:.85rem">{{ run.started_at[:16].replace("T", " ") }}</td>
+          <td style="font-size:.85rem">{{ run.started_at | localtime }}</td>
           <td style="font-size:.85rem">
-            {% if run.finished_at %}{{ run.finished_at[:16].replace("T", " ") }}
+            {% if run.finished_at %}{{ run.finished_at | localtime }}
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td>
+          <td style="font-size:.85rem" class="text-muted">{{ run.started_at | duration(run.finished_at) or "—" }}</td>
           <td>
             {% if run.status == "success" %}
               <span class="badge" style="background:#e6f4ea;color:#1e7e34"><i class="bi bi-check-circle me-1"></i>Erfolgreich</span>
             {% elif run.status == "error" %}
               <span class="badge" style="background:#fdecea;color:#c0392b"><i class="bi bi-x-circle me-1"></i>Fehler</span>
             {% else %}
-              <span class="badge bg-primary">{{ run.status }}</span>
+              <span class="badge bg-primary"><span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;border-width:.15em"></span>Läuft</span>
             {% endif %}
           </td>
           <td><span class="fw-semibold">{{ run.items_processed }}</span></td>
@@ -56,7 +58,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-5">
+          <td colspan="8" class="text-center text-muted py-5">
             <i class="bi bi-inbox fs-3 d-block mb-2"></i>Keine Sync-Läufe vorhanden
           </td>
         </tr>
