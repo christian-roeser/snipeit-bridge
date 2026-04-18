@@ -74,6 +74,25 @@ class SnipeIT:
     def update_hardware(self, asset_id, payload):
         self._patch(f"/hardware/{asset_id}", payload)
 
+    def set_model_image(self, model_id, image_url):
+        try:
+            img = requests.get(image_url, timeout=15)
+            if not img.ok:
+                return
+            filename = image_url.rsplit("/", 1)[-1] or "model.jpg"
+            content_type = img.headers.get("Content-Type", "image/jpeg").split(";")[0]
+            requests.patch(
+                f"{self.base}/models/{model_id}",
+                files={"image": (filename, img.content, content_type)},
+                headers={
+                    "Authorization": self.session.headers["Authorization"],
+                    "Accept": "application/json",
+                },
+                timeout=30,
+            )
+        except Exception:
+            pass
+
     def _find_by_name(self, path, name, limit=500):
         # Recovery scan when search/create returned no usable id (e.g. duplicate
         # name with different attributes, or Snipe-IT returned 200 with error status).
@@ -145,7 +164,7 @@ class SnipeIT:
     def update_user(self, user_id, payload):
         self._patch(f"/users/{user_id}", payload)
 
-    def get_or_create_model(self, name, manufacturer_id, category_id, model_number=None):
+    def get_or_create_model(self, name, manufacturer_id, category_id, model_number=None, image_url=None):
         key = ("model", name)
         if key not in self._cache:
             data = self._get("/models", params={"search": name, "limit": 10})
@@ -166,4 +185,6 @@ class SnipeIT:
                 if mid is None:
                     mid = self._find_by_name("/models", name)
                 self._cache[key] = mid
+                if image_url and mid:
+                    self.set_model_image(mid, image_url)
         return self._cache[key]
