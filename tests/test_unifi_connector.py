@@ -135,4 +135,31 @@ def test_site_filter_warns_when_no_sites_match():
     devices = unifi.get_devices()
 
     assert devices == []
-    assert "UNIFI_SITES filter matched no sites" in unifi.get_last_errors()
+    assert len(unifi.get_last_errors()) == 1
+    assert "UNIFI_SITES filter matched no sites" in unifi.get_last_errors()[0]
+    assert "Configured: DoesNotExist" in unifi.get_last_errors()[0]
+    assert "Office" in unifi.get_last_errors()[0]
+
+
+def test_site_filter_can_match_host_id_or_id_fields():
+    unifi = Unifi("https://api.ui.com", "test-key", sites="host-2,site-1")
+
+    def fake_get(path, params=None):
+        if path == "/v1/sites":
+            return {
+                "data": [
+                    {"siteId": "site-1", "name": "Office", "hostId": "host-1"},
+                    {"id": "site-2-alt", "name": "Lab", "meta": {"hostId": "host-2"}},
+                ]
+            }
+        if path == "/v1/devices":
+            assert set(params["hostIds[]"]) == {"host-1", "host-2"}
+            return {"data": []}
+        raise AssertionError(f"Unexpected path: {path}")
+
+    unifi._get = fake_get
+
+    devices = unifi.get_devices()
+
+    assert devices == []
+    assert unifi.get_last_errors() == []

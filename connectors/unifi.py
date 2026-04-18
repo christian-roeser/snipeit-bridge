@@ -41,12 +41,29 @@ class Unifi:
         if self.site_filter:
             filter_set = {self._norm(v) for v in self.site_filter if v}
             before_count = len(sites)
+            def _tokens(site):
+                return {
+                    self._norm(site.get("siteId")),
+                    self._norm(site.get("id")),
+                    self._norm(site.get("name")),
+                    self._norm(site.get("hostId")),
+                    self._norm((site.get("meta") or {}).get("hostId") if isinstance(site.get("meta"), dict) else None),
+                }
             sites = [
                 s for s in sites
-                if self._norm(s.get("siteId")) in filter_set or self._norm(s.get("name")) in filter_set
+                if any(token and token in filter_set for token in _tokens(s))
             ]
             if before_count and not sites:
-                self._last_errors.append("UNIFI_SITES filter matched no sites")
+                available = []
+                for s in data.get("data", [])[:20]:
+                    sid = s.get("siteId") or s.get("id") or "?"
+                    name = s.get("name") or "(no-name)"
+                    hid = s.get("hostId") or ((s.get("meta") or {}).get("hostId") if isinstance(s.get("meta"), dict) else None) or "(no-hostId)"
+                    available.append(f"{name} [siteId={sid}, hostId={hid}]")
+                details = "; ".join(available) if available else "none"
+                self._last_errors.append(
+                    f"UNIFI_SITES filter matched no sites. Configured: {', '.join(self.site_filter)}. Available: {details}"
+                )
         return sites
 
     @staticmethod
