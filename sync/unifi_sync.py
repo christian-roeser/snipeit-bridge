@@ -2,6 +2,30 @@ import time
 import db
 
 
+def _extract_mac(device):
+    candidates = [
+        device.get("mac"),
+        device.get("macAddress"),
+        device.get("primaryMac"),
+        device.get("reportedMac"),
+        (device.get("uidb") or {}).get("mac") if isinstance(device.get("uidb"), dict) else None,
+        (device.get("system") or {}).get("mac") if isinstance(device.get("system"), dict) else None,
+    ]
+    for value in candidates:
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    return ""
+
+
+def _device_name(device):
+    name = device.get("name") or device.get("hostname") or device.get("displayName")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    site_name = device.get("_site_name") or device.get("_site_id") or "unknown-site"
+    host_id = device.get("hostId") or device.get("host_id") or "unknown-host"
+    return f"unknown-device ({site_name}/{host_id})"
+
+
 def run(snipeit, unifi, run_id):
     items = 0
     try:
@@ -15,8 +39,8 @@ def run(snipeit, unifi, run_id):
 
     for device in devices:
         time.sleep(0.1)
-        mac = (device.get("mac") or device.get("macAddress") or "").strip().lower()
-        name = device.get("name") or device.get("hostname") or mac
+        mac = _extract_mac(device)
+        name = _device_name(device)
         model_name = device.get("model") or device.get("productModel") or "Unifi Device"
         device_type = device.get("type") or "network"
 

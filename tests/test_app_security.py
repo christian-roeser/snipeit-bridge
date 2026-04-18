@@ -13,10 +13,10 @@ def _load_app(tmp_path, monkeypatch):
 
     import config
     import db
-    import app
 
     importlib.reload(config)
     importlib.reload(db)
+    import app
     app_module = importlib.reload(app)
 
     app_module.app.config["TESTING"] = True
@@ -81,9 +81,9 @@ def test_multi_worker_requires_non_memory_rate_limit_storage(tmp_path, monkeypat
 
     import config
     import db
-    import app
 
     importlib.reload(config)
     importlib.reload(db)
+    import app
     with pytest.raises(RuntimeError, match="RATELIMIT_STORAGE_URI"):
         importlib.reload(app)
